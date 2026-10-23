@@ -1220,7 +1220,7 @@
       ],
     },
     first_date: {
-      cat: "people", weight: 0.4, fallback: 1, max: 2, cond: (c) => c.week > 6,
+      cat: "people", weight: 0.4, fallback: 1, max: 2, cond: (c) => c.week > 6 && (c.love || 0) <= 0,
       title: () => "交友軟體配對成功",
       body: () => "對方約你週日去吃早午餐。",
       options: [
@@ -1345,6 +1345,107 @@
         { label: "專心在現在的工作", note: "", apply: () => {} },
       ],
     },
+    // 10/24 第三批：人情開銷與戀愛（使用者：同學結婚、生小孩、過年紅包、戀愛故事）
+    classmate_wedding: {
+      cat: "people", weight: 0.7, fallback: 1, cd: 14, max: 4, cond: (c) => c.week > 5,
+      title: () => "同學寄來喜帖",
+      body: (c) => `${pick(c, ["高職同班的阿翔", "以前一起打球的小胖", "國中坐你隔壁的佳穎", "高職社團的學姊"])}要結婚了，喜宴在週六晚上。`,
+      options: [
+        { label: "人到，包 NT$2,600", note: "少 4 小時；體力 +4", apply: (c) => { c.savings -= 2600; c.flags.skipHours = (c.flags.skipHours || 0) + 4; c.energy += 4; } },
+        { label: "人不到，禮到 NT$1,600", note: "同學可能有點失望", apply: (c) => { c.savings -= 1600; if (chance(c, 0.3)) log(c, "之後同學群組聚餐，大家好像忘了約你。"); } },
+        { label: "裝沒看到", note: "省錢，但可能被傳出去", apply: (c) => { if (chance(c, 0.5)) { c.energy -= 5; log(c, "同學在群組問「有人聯絡得到他嗎」，你看了很尷尬。"); } } },
+      ],
+    },
+    classmate_baby: {
+      cat: "people", weight: 0.6, fallback: 1, cd: 16, max: 3, cond: (c) => c.week > 8,
+      title: () => "同學生小孩了",
+      body: (c) => `${pick(c, ["阿翔", "佳穎", "以前的班長", "一起長大的鄰居阿哲"])}在群組貼了寶寶的照片，大家都在討論要送什麼。`,
+      options: [
+        { label: "合送一台嬰兒推車", note: "分攤 NT$1,500～2,500", apply: (c) => { c.savings -= intBetween(c, 15, 25) * 100; c.friend = (c.friend || 0) + 1; } },
+        { label: "自己買一套嬰兒衣服", note: "NT$800～1,200", apply: (c) => { c.savings -= intBetween(c, 8, 12) * 100; } },
+        { label: "傳個貼圖恭喜", note: "", apply: (c) => { if (chance(c, 0.3)) log(c, "滿月酒沒有收到邀請。"); } },
+      ],
+    },
+    love_meet: {
+      cat: "people", weight: 0.8, fallback: 1, max: 1, cond: (c) => !c.love && c.week > 4,
+      title: () => "每天都來買紅茶的她",
+      body: (c) => `附近花店的${c.loveName}每天下午都來買一杯無糖紅茶，今天她多看了你一眼，問你幾點下班。`,
+      make: () => ({}),
+      options: [
+        { label: "說下班可以一起吃個飯", note: "看你們聊不聊得來", apply: (c) => { if (chance(c, 0.45 + c.fame / 200 + c.skills.service / 200)) { c.love = 1; log(c, `你跟${c.loveName}去吃了巷口的牛肉麵，聊到店都要打烊了。`); } else { c.love = -1; c.energy -= 6; log(c, `${c.loveName}說她只是想知道幾點還買得到飲料。你想挖個洞鑽進去。`); } } },
+        { label: "笑一笑，說「晚上十點」", note: "", apply: (c) => { c.love = -1; } },
+      ],
+    },
+    love_dating: {
+      cat: "people", weight: 1, fallback: 1, cd: 4, max: 3, cond: (c) => c.love === 1,
+      title: () => "約會",
+      body: (c) => `${c.loveName}問你週日要不要去${pick(c, ["淡水看夕陽", "看最近很紅的電影", "逛文創市集", "騎車去山上吃野菜"])}。`,
+      options: [
+        { label: "去！", note: "−NT$800～2,000；體力 +8", apply: (c) => { c.savings -= intBetween(c, 8, 20) * 100; c.energy += 8; c.loveScore = (c.loveScore || 0) + 1; } },
+        { label: "這週要排班，下次好嗎", note: "她可能失望", apply: (c) => { c.loveScore = (c.loveScore || 0) - 1; if (chance(c, 0.4)) log(c, `${c.loveName}回了一個「好」，沒有表情符號。`); } },
+      ],
+    },
+    love_confess: {
+      cat: "people", weight: 1.5, fallback: 1, max: 1, cond: (c) => c.love === 1 && (c.loveScore || 0) >= 2,
+      title: () => "要不要告白？",
+      body: (c) => `跟${c.loveName}約會好幾次了。今天送她回家的路上，她突然安靜下來。`,
+      options: [
+        { label: "告白", note: "成功就是男女朋友；失敗會很難過", apply: (c) => { if (chance(c, 0.55 + (c.loveScore || 0) * 0.08)) { c.love = 2; c.energy += 15; log(c, `${c.loveName}笑著說：「我等你這句話很久了。」`); } else { c.love = -1; c.energy -= 20; c.flags.heartbreak = c.week + 3; log(c, `${c.loveName}說她把你當很好的朋友。你騎車繞了整個城市才回家。`); } } },
+        { label: "再等等", note: "", apply: (c) => { c.loveScore = (c.loveScore || 0) - 1; } },
+      ],
+    },
+    love_overtime: {
+      cat: "people", weight: 1, fallback: 1, cd: 6, max: 4, cond: (c) => c.love === 2,
+      title: () => "她說你都在上班",
+      body: (c) => `${c.loveName}說這個月你們只見了兩次面，她生日那天你也在店裡。`,
+      options: [
+        { label: "排一天假陪她", note: "少 8 小時；−NT$1,500；感情 +", apply: (c) => { c.flags.skipHours = (c.flags.skipHours || 0) + 8; c.savings -= 1500; c.energy += 6; c.loveScore = (c.loveScore || 0) + 1; } },
+        { label: "解釋現在要存錢開店", note: "看她能不能理解", apply: (c) => { if (chance(c, 0.5)) { log(c, `${c.loveName}說：「那你要答應我，開店那天第一杯給我。」`); c.energy += 3; } else { c.loveScore = (c.loveScore || 0) - 2; c.energy -= 6; log(c, `${c.loveName}掛了電話，兩天沒回訊息。`); } } },
+      ],
+    },
+    love_anniversary: {
+      cat: "people", weight: 0.8, fallback: 1, cd: 20, max: 2, cond: (c) => c.love === 2,
+      title: () => "交往紀念日",
+      body: (c) => `明天是你跟${c.loveName}在一起的紀念日。`,
+      options: [
+        { label: "訂一間餐廳，買禮物", note: "−NT$3,000～6,000；體力 +10", apply: (c) => { c.savings -= intBetween(c, 3, 6) * 1000; c.energy += 10; c.loveScore = (c.loveScore || 0) + 2; } },
+        { label: "親手做一杯她專屬的飲料", note: "看你的調飲", apply: (c) => { if (c.skills.brew + intBetween(c, 0, 30) >= 45) { c.energy += 8; c.loveScore = (c.loveScore || 0) + 2; log(c, `${c.loveName}把那杯飲料拍照設成手機桌布。`); } else { c.loveScore = (c.loveScore || 0) - 1; log(c, `${c.loveName}喝了一口說「好甜喔」，然後放在一旁。`); } } },
+      ],
+    },
+    love_support: {
+      cat: "people", weight: 0.8, fallback: 0, cd: 8, max: 4, cond: (c) => c.love === 2,
+      title: () => "她帶晚餐來店裡",
+      body: (c) => `${c.loveName}知道你今天關店班，帶了一盒滷味來等你下班。`,
+      options: [{ label: "一起吃", note: "體力 +6～12", apply: (c) => { c.energy += intBetween(c, 6, 12); } }],
+    },
+    love_parents: {
+      cat: "people", weight: 0.7, fallback: 1, max: 1, cond: (c) => c.love === 2 && c.week > 20,
+      title: () => "她要帶你回家見爸媽",
+      body: (c) => `${c.loveName}的爸爸是公務員，聽說很在意「穩定的工作」。`,
+      options: [
+        { label: "穿上襯衫，帶伴手禮去", note: "−NT$1,500；結果看你的表現", apply: (c) => { c.savings -= 1500; if (c.trust + c.fame + intBetween(c, 0, 40) >= 90) { c.energy += 10; log(c, "她爸爸聽你講開店計畫，最後說：「年輕人肯拚是好事。」"); } else { c.energy -= 10; c.loveScore = (c.loveScore || 0) - 2; log(c, "她爸爸整頓飯都在問你有沒有考公職的打算。"); } } },
+        { label: "說還沒準備好", note: "她有點受傷", apply: (c) => { c.loveScore = (c.loveScore || 0) - 2; } },
+      ],
+    },
+    love_breakup: {
+      cat: "urgent", weight: 1.5, fallback: 0, max: 1, cond: (c) => c.love === 2 && (c.loveScore || 0) <= -2,
+      title: () => "她說想冷靜一下",
+      body: (c) => `${c.loveName}說你們最近見面都在吵架，她累了。`,
+      options: [
+        { label: "請一天假，當面好好談", note: "少 8 小時；可能挽回", apply: (c) => { c.flags.skipHours = (c.flags.skipHours || 0) + 8; if (chance(c, 0.45)) { c.loveScore = 1; c.energy += 5; log(c, `你們在河堤講了一整晚。${c.loveName}說再試試看。`); } else { c.love = -1; c.energy -= 25; c.flags.heartbreak = c.week + 4; log(c, `${c.loveName}還是說了分手。你把她最愛的無糖紅茶從菜單記憶裡刪不掉。`); } } },
+        { label: "尊重她", note: "分手了；接下來幾週很難熬", apply: (c) => { c.love = -1; c.energy -= 20; c.flags.heartbreak = c.week + 4; log(c, `你跟${c.loveName}分手了。`); } },
+      ],
+    },
+    cny_red_envelopes: {
+      cat: "urgent", weight: 0, fallback: 1,
+      title: () => "過年要包紅包了",
+      body: (c) => `第一次自己賺錢過年。爸媽、阿嬤、還有${pick(c, ["三個姪子", "兩個外甥", "表弟表妹"])}都在等你的紅包。`,
+      options: [
+        { label: "爸媽各六千、阿嬤三千、小孩各六百", note: "−NT$16,800；家裡很開心", apply: (c) => { c.savings -= 16800; c.flags.familyOk = 1; c.energy += 8; } },
+        { label: "量力而為，包 NT$6,000", note: "親戚可能會講話", apply: (c) => { c.savings -= 6000; if (chance(c, 0.4)) { c.energy -= 5; log(c, "二姑說「在外面賺那麼辛苦，包這樣就好」，聽起來不太像稱讚。"); } } },
+        { label: "說今年要存錢開店，只包爸媽", note: "−NT$3,000；媽媽幫你擋親戚", apply: (c) => { c.savings -= 3000; if (!c.flags.familyOk) { c.energy -= 6; log(c, "爸爸整個過年都沒怎麼跟你說話。"); } } },
+      ],
+    },
     promote_clerk: {
       cat: "people", weight: 0, fallback: -1,
       title: () => "德哥：「要不要轉正職店員？」",
@@ -1420,6 +1521,7 @@
     c.shop.district = pick(c, districts);
     c.shop.district2 = pick(c, districts.filter((d) => d !== c.shop.district));
     c.signature.name = pick(c, ["焙香烏龍奶霜", "柚香四季春", "黑糖桂圓鮮奶", "荔枝紅玉冰茶", "鳳梨青茶冰沙"]);
+    c.loveName = pick(c, ["小晴", "語彤", "怡君", "芷涵", "佩珊"]);
     log(c, `十九歲的${c.name}在${c.shop.district}的「${c.shop.name}」找到第一份工作：外送小弟。`);
     rollSpecials(c);
     return c;
@@ -1554,6 +1656,8 @@
       out.push({ text: "連續好幾週超時，你過勞了：接下來兩週學東西比較慢，體力也恢復得慢。" });
     }
     if ((c.flags.burnout || 0) > c.week) c.energy -= 5;
+    if ((c.flags.heartbreak || 0) > c.week) { c.energy -= 6; out.push({ text: "失戀的這幾週，做什麼都提不起勁（體力 −6）。" }); }
+    if (c.love === 2) c.energy += 2; // 有人陪，比較撐得住
     // 太久沒練的能力會生疏（20 以上才會退）
     c.lastTrain = c.lastTrain || {};
     const rusty = [];
@@ -1607,6 +1711,9 @@
     }
     if (!c.over) {
       if (c.energy <= 5) c.inbox.push(ev(c, "sick"));
+      // 每年過年（年初第 5 週）一定要包紅包
+      const cal = T.calendar(c.week);
+      if (cal.weekOfYear === 5 && c.flags.cnyYear !== cal.year) { c.flags.cnyYear = cal.year; c.inbox.push(ev(c, "cny_red_envelopes")); }
       const g = goals(c);
       // 店長的位子不一定是你的：第一次符合條件時，德哥可能先讓阿凱試（信任 90 以上機會減半）
       if (c.stage === "clerk" && g.every((x) => x.ok) && !c.flags.rivalChecked) {
