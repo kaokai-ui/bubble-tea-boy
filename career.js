@@ -758,6 +758,589 @@
         { label: "跟房東理論", note: "可能少付，也可能被趕", apply: (c) => { if (chance(c, 0.5)) { c.savings -= 1000; log(c, "房東讓步，改成一度五塊。"); } else { c.savings -= 2800; c.energy -= 4; log(c, "房東說不爽可以搬走，最後還是全付。"); } } },
       ],
     },
+    // 10/24 第二批：再加 70 種（外送 20、店員 25、生活 25），降低重複
+    wrong_change: {
+      cat: "urgent", weight: 0.7, fallback: 0, cd: 14, max: 2, cond: (c) => c.stage === "runner",
+      title: () => "貨到付款找錯錢",
+      body: () => "回店裡對帳才發現，剛剛那位客人你多找了一張。",
+      options: [
+        { label: "自己吸收", note: "NT$100～500", apply: (c) => { c.savings -= pick(c, [100, 100, 500]); } },
+        { label: "打電話問客人", note: "客人可能還，也可能不理你", apply: (c) => { if (chance(c, 0.5)) { c.fame += 1; log(c, "客人笑說「我還以為你送我的」，把錢轉回來了。"); } else { c.savings -= 500; c.trust -= 1; log(c, "客人說他沒拿到，還客訴你態度不好。"); } } },
+      ],
+    },
+    factory_gate: {
+      cat: "urgent", weight: 0.7, fallback: 1, cd: 14, max: 2, cond: (c) => c.stage === "runner",
+      title: () => "科技廠門口要換證",
+      body: () => "警衛說外送員要等員工下來領，客人卻在會議裡沒接電話。",
+      options: [
+        { label: "在門口等", note: "後面兩單會遲到", apply: (c) => { c.trust -= intBetween(c, 1, 3); if (chance(c, 0.4)) { c.savings += 300; log(c, "客人開完會下來，覺得不好意思，給了 NT$300。"); } } },
+        { label: "交給警衛先走", note: "客人可能找不到", apply: (c) => { if (chance(c, 0.35)) { c.fame -= 2; log(c, "飲料在警衛室放到退冰，客人給了負評。"); } } },
+      ],
+    },
+    drunk_customer: {
+      cat: "urgent", weight: 0.6, fallback: 1, cd: 16, max: 2, cond: (c) => c.stage === "runner" && c.week > 2,
+      title: () => "宵夜單的客人喝醉了",
+      body: () => "他一直要你進屋陪他喝一杯，錢也拿不出來。",
+      options: [
+        { label: "耐心等他找錢", note: "多花半小時", apply: (c) => { c.energy -= 4; if (chance(c, 0.5)) { c.savings += 500; log(c, "他最後塞了一張五百說不用找。"); } else c.trust -= 1; } },
+        { label: "把飲料帶回店裡", note: "這單算店裡的損失", apply: (c) => { c.trust -= 1; } },
+      ],
+    },
+    helmet_stolen: {
+      cat: "urgent", weight: 0.5, fallback: 0, cd: 30, max: 1, cond: (c) => c.stage === "runner",
+      title: () => "安全帽被偷了",
+      body: () => "掛在機車上不到五分鐘就不見了。",
+      options: [
+        { label: "買一頂新的", note: "NT$400～1,200", apply: (c) => { c.savings -= intBetween(c, 4, 12) * 100; } },
+        { label: "先借店裡的舊安全帽", note: "很臭，但能撐", apply: (c) => { c.energy -= 2; } },
+      ],
+    },
+    road_works: {
+      cat: "people", weight: 0.7, fallback: 0, cd: 14, max: 2, cond: (c) => c.stage === "runner",
+      title: () => "主要道路在挖馬路",
+      body: () => "這兩週要繞一大圈，每單多五分鐘。",
+      options: [
+        { label: "研究替代路線", note: "路線熟悉度 +5～10；這週體力 −4", apply: (c) => { c.routes = clamp(c.routes + intBetween(c, 5, 10), 0, 100); c.energy -= 4; } },
+        { label: "照舊騎，遲到就遲到", note: "老闆信任 −1～3", apply: (c) => { c.trust -= intBetween(c, 1, 3); } },
+      ],
+    },
+    kitten_rescue: {
+      cat: "people", weight: 0.5, fallback: 1, max: 1, cond: (c) => c.stage === "runner",
+      title: () => "路邊的紙箱裡有一隻小貓",
+      body: () => "下著小雨，小貓一直叫，你手上還有兩單。",
+      options: [
+        { label: "先抱去附近的獸醫", note: "NT$800；兩單遲到；你拍的照片可能被轉傳", apply: (c) => { c.savings -= 800; c.trust -= 2; if (chance(c, 0.5)) { c.fame += 5; log(c, "你抱小貓的照片在地方社團被轉了上千次。"); } } },
+        { label: "打給動保處就走", note: "", apply: (c) => { c.energy -= 2; } },
+      ],
+    },
+    hospital_order: {
+      cat: "people", weight: 0.6, fallback: 0, cd: 16, max: 2, cond: (c) => c.stage === "runner",
+      title: () => "醫院護理站的大單",
+      body: () => "夜班護理師訂了二十五杯，要送到十二樓護理站。",
+      options: [{ label: "送過去", note: "小費看大家心情", apply: (c) => { const v = intBetween(c, 1, 8) * 100; c.savings += v; c.fame += 1; log(c, `護理師們湊了 NT$${v} 小費，還說「辛苦了」。`); } }],
+    },
+    parking_fight: {
+      cat: "urgent", weight: 0.6, fallback: 1, cd: 16, max: 2, cond: (c) => c.stage === "runner",
+      title: () => "別家的外送員說你搶他的位子",
+      body: () => "大樓前只有一個臨停位，對方開始大聲罵人。",
+      options: [
+        { label: "跟他理論", note: "可能吵贏，也可能被拍上網", apply: (c) => { if (chance(c, 0.5)) log(c, "對方罵一罵騎走了。"); else { c.fame -= 3; c.trust -= 2; log(c, "吵架的影片被上傳，大家都看得到你制服上的店名。"); } } },
+        { label: "讓給他，停遠一點", note: "體力 −3", apply: (c) => { c.energy -= 3; } },
+      ],
+    },
+    gps_down: {
+      cat: "urgent", weight: 0.6, fallback: 0, cd: 14, max: 2, cond: (c) => c.stage === "runner",
+      title: () => "導航 App 當機",
+      body: () => "手上五單，地址都在不熟的重劃區。",
+      options: [{ label: "靠記憶和路標硬送", note: "看你的路線熟悉度", apply: (c) => { if (c.routes + intBetween(c, 0, 40) >= 50) { c.routes = clamp(c.routes + 3, 0, 100); log(c, "五單都送到了，你比導航還熟。"); } else { c.trust -= 3; c.energy -= 5; log(c, "繞了四十分鐘，兩位客人取消訂單。"); } } }],
+    },
+    raincoat_torn: {
+      cat: "urgent", weight: 0.5, fallback: 1, cd: 20, max: 2, cond: (c) => c.stage === "runner",
+      title: () => "雨衣破了一個大洞",
+      body: () => "下午的雷陣雨把你淋得全身濕。",
+      options: [
+        { label: "買一件好一點的雨衣", note: "NT$600～1,200", apply: (c) => { c.savings -= intBetween(c, 6, 12) * 100; } },
+        { label: "貼膠帶撐著", note: "可能感冒", apply: (c) => { c.energy -= 4; if (chance(c, 0.35)) c.inbox.push(ev(c, "caught_cold")); } },
+      ],
+    },
+    not_cold_enough: {
+      cat: "urgent", weight: 0.6, fallback: 0, cd: 12, max: 2, cond: (c) => c.stage === "runner",
+      title: () => "客人說飲料不冰",
+      body: () => "大熱天送了二十分鐘，冰塊都化了。客人要求重送。",
+      options: [
+        { label: "回店裡重送", note: "體力 −5；客人滿意度看運氣", apply: (c) => { c.energy -= 5; if (chance(c, 0.6)) { c.fame += 1; c.trust += 1; } else c.trust -= 1; } },
+        { label: "道歉，給下次折價券", note: "客人可能不買單", apply: (c) => { if (chance(c, 0.4)) c.fame -= 2; } },
+      ],
+    },
+    baby_cake: {
+      cat: "people", weight: 0.4, fallback: 0, max: 1, cond: (c) => c.stage === "runner" && c.fame >= 6,
+      title: () => "熟客送你彌月蛋糕",
+      body: () => "常點珍奶的工程師當爸爸了，特地留了一盒給你。",
+      options: [{ label: "恭喜他", note: "體力 +3；名聲 +1", apply: (c) => { c.energy += 3; c.fame += 1; } }],
+    },
+    lonely_grandpa: {
+      cat: "people", weight: 0.5, fallback: 1, max: 1, cond: (c) => c.stage === "runner" && c.week > 4,
+      title: () => "獨居阿公每天都點一杯",
+      body: () => "他其實不太喝甜的，只是想有人跟他說說話。",
+      options: [
+        { label: "每次多聊五分鐘", note: "服務 +2；名聲 +1；後面的單會晚一點", apply: (c) => { gain(c, "service", 2); c.fame += 1; c.trust -= 1; } },
+        { label: "送到就走", note: "", apply: () => {} },
+      ],
+    },
+    prank_order: {
+      cat: "urgent", weight: 0.5, fallback: 0, cd: 20, max: 2, cond: (c) => c.stage === "runner",
+      title: () => "惡作劇訂單",
+      body: () => "地址是一間空屋，電話是空號。十杯飲料白做了。",
+      options: [{ label: "回店裡報告", note: "德哥說要不要扣你看心情", apply: (c) => { if (chance(c, 0.5)) { c.savings -= intBetween(c, 2, 6) * 100; log(c, "德哥說下次貨到付款的大單要先打電話確認，這次扣你一點。"); } else log(c, "德哥嘆氣：「不是你的錯。」"); } }],
+    },
+    platform_bonus: {
+      cat: "people", weight: 0.6, fallback: 1, cd: 14, max: 3, cond: (c) => c.stage === "runner",
+      title: () => "平台衝單獎勵",
+      body: () => "這週送滿一百二十單，平台加發獎金。",
+      options: [
+        { label: "拚拚看", note: "多 8 小時；達標獎金 NT$1,000～2,000，沒達標就白累", apply: (c) => { c.flags.extraHours = (c.flags.extraHours || 0) + 8; c.energy -= 10; if (c.routes + intBetween(c, 0, 60) >= 55) { const v = intBetween(c, 10, 20) * 100; c.savings += v; log(c, `衝單成功，平台獎金 NT$${v}。`); } else log(c, "差六單沒達標，獎金一毛都沒有。"); } },
+        { label: "照平常跑", note: "", apply: () => {} },
+      ],
+    },
+    emission_check: {
+      cat: "urgent", weight: 0.4, fallback: 0, cd: 40, max: 1, cond: (c) => c.stage === "runner",
+      title: () => "機車排氣定檢通知",
+      body: () => "老機車排氣不合格的話要罰錢。",
+      options: [
+        { label: "先去保養再檢驗", note: "NT$800；一定過", apply: (c) => { c.savings -= 800; c.flags.scooterOk = c.week + 8; } },
+        { label: "直接去驗", note: "沒過要罰 NT$1,500", apply: (c) => { if ((c.flags.scooterOk || 0) > c.week || chance(c, 0.5)) log(c, "排氣檢驗過了。"); else { c.savings -= 1500; log(c, "排氣不合格，罰了 NT$1,500。"); } } },
+      ],
+    },
+    night_robbery: {
+      cat: "urgent", weight: 0.25, fallback: 0, max: 1, cond: (c) => c.stage === "runner" && c.week > 6,
+      title: () => "深夜送餐遇到搶劫",
+      body: () => "兩個人攔下你，要你把錢包和手機交出來。",
+      options: [
+        { label: "東西給他們，保命要緊", note: "損失 NT$3,000～8,000", apply: (c) => { c.savings -= intBetween(c, 3, 8) * 1000; c.energy -= 15; log(c, "報了警，但東西沒找回來。好幾天晚上都睡不好。"); } },
+        { label: "騎車衝出去", note: "很危險", apply: (c) => { if (chance(c, 0.5)) { c.energy -= 8; log(c, "你衝出巷子，一路騎到派出所。"); } else { c.energy -= 30; c.savings -= 5000; c.flags.skipHours = (c.flags.skipHours || 0) + 16; log(c, "被拉下車受了傷，錢也被搶走，請了兩天假。"); } } },
+      ],
+    },
+    runner_quits: {
+      cat: "people", weight: 0.6, fallback: 1, max: 2, cond: (c) => c.stage === "runner" && c.week > 3,
+      title: () => "另一位外送員不做了",
+      body: () => "阿弘說他要去跑貨運，店裡的外送只剩你一個。",
+      options: [
+        { label: "多扛一點", note: "多 8 小時（照時薪＋小費）；體力 −12", apply: (c) => { c.flags.extraHours = (c.flags.extraHours || 0) + 8; c.energy -= 12; c.savings += intBetween(c, 3, 8) * 100; c.trust += 3; } },
+        { label: "跟德哥說要找人", note: "老闆信任 −1", apply: (c) => { c.trust -= 1; } },
+      ],
+    },
+    same_name_shop: {
+      cat: "urgent", weight: 0.5, fallback: 0, cd: 20, max: 1, cond: (c) => c.stage === "runner",
+      title: () => "送到同名的另一家公司",
+      body: () => "兩家都叫「大成」，你送錯了，正確的那家在另一個區。",
+      options: [{ label: "趕快拿回來重送", note: "看對方肯不肯還", apply: (c) => { if (chance(c, 0.6)) { c.energy -= 6; c.trust -= 1; } else { c.savings -= 600; c.trust -= 3; log(c, "對方已經喝掉一半，只好重做一份，錢從你薪水扣。"); } } }],
+    },
+    coffee_coupon: {
+      cat: "people", weight: 0.5, fallback: 0, cd: 12, max: 2, cond: (c) => c.stage === "runner",
+      title: () => "客人在袋子上留了紙條",
+      body: () => "「謝謝你每天風雨無阻」，裡面夾了一張咖啡券。",
+      options: [{ label: "收好", note: "體力 +3", apply: (c) => { c.energy += 3; c.fame += intBetween(c, 0, 1); } }],
+    },
+    pearls_burnt: {
+      cat: "urgent", weight: 0.8, fallback: 0, cd: 12, max: 2, cond: (c) => c.stage === "clerk",
+      title: () => "珍珠煮焦了",
+      body: () => "你在忙櫃台，忘了關火，一整鍋珍珠黏在鍋底。",
+      options: [
+        { label: "跟德哥坦白，重煮", note: "賣斷一小時；老闆信任 −1～3", apply: (c) => { c.trust -= intBetween(c, 1, 3); } },
+        { label: "挑沒焦的部分先用", note: "被客人喝出來就慘了", apply: (c) => { if (chance(c, 0.5)) log(c, "沒人發現。"); else { c.fame -= 4; c.trust -= 4; log(c, "客人喝到焦味，拍照貼上評論。"); } } },
+      ],
+    },
+    new_pos: {
+      cat: "people", weight: 0.6, fallback: 0, max: 1, cond: (c) => c.stage === "clerk",
+      title: () => "店裡換了新的點餐系統",
+      body: () => "德哥要你先學會，再教其他人。",
+      options: [{ label: "下班留下來研究", note: "看你的營運能力", apply: (c) => { c.energy -= 4; if (c.skills.ops + intBetween(c, 0, 30) >= 35) { gain(c, "ops", 3); c.trust += 3; log(c, "你把新系統摸熟了，還做了一張操作小抄。"); } else { c.trust -= 2; log(c, "第一天上線就當機兩次，排隊排到門外。"); } } }],
+    },
+    child_slip: {
+      cat: "urgent", weight: 0.5, fallback: 0, cd: 30, max: 1, cond: (c) => c.stage === "clerk",
+      title: () => "小孩踩到飲料滑倒",
+      body: () => "地上的冰沙還沒擦，小朋友跌倒哭了，家長很生氣。",
+      options: [
+        { label: "道歉，陪他們去診所", note: "NT$500～2,000；名聲看家長", apply: (c) => { c.savings -= intBetween(c, 5, 20) * 100; c.fame += chance(c, 0.6) ? 1 : -2; } },
+        { label: "請德哥處理", note: "老闆信任 −3", apply: (c) => { c.trust -= 3; } },
+      ],
+    },
+    celebrity_order: {
+      cat: "people", weight: 0.4, fallback: 0, max: 1, cond: (c) => c.stage === "clerk" && c.fame >= 12,
+      title: () => "藝人的經紀公司來訂飲料",
+      body: () => "附近在拍戲，劇組要六十杯，指定要你們的招牌。",
+      options: [{ label: "全力做好", note: "看你的調飲", apply: (c) => { c.energy -= 8; if (c.skills.brew + intBetween(c, 0, 30) >= 55) { c.fame += intBetween(c, 5, 10); c.trust += 3; log(c, "主角在限動拍了你們的飲料，隔天門口排了三十個人。"); } else { c.fame += 1; log(c, "劇組喝完沒什麼反應。"); } } }],
+    },
+    expired_milk: {
+      cat: "urgent", weight: 0.6, fallback: 0, cd: 20, max: 2, cond: (c) => c.stage === "clerk",
+      title: () => "冰箱裡有兩瓶過期鮮奶",
+      body: () => "過期一天，看起來還好。德哥不在店裡。",
+      options: [
+        { label: "倒掉，記在報廢表", note: "老闆信任 +2", apply: (c) => { c.trust += 2; } },
+        { label: "先用掉，不要浪費", note: "可能沒事，也可能出大事", apply: (c) => { if (chance(c, 0.7)) log(c, "沒有人喝出問題。"); else { c.fame -= 8; c.trust -= 8; log(c, "兩位客人喝完肚子痛，衛生局來店裡查。"); } } },
+      ],
+    },
+    fridge_alarm: {
+      cat: "urgent", weight: 0.5, fallback: 1, cd: 20, max: 2, cond: (c) => c.stage === "clerk",
+      title: () => "半夜冰箱溫度警報",
+      body: () => "手機收到店裡冰箱的警報，現在是凌晨一點。",
+      options: [
+        { label: "騎車回店裡處理", note: "體力 −8；老闆信任 +4", apply: (c) => { c.energy -= 8; c.trust += 4; } },
+        { label: "傳訊息給德哥就睡", note: "原料可能壞掉", apply: (c) => { if (chance(c, 0.5)) { c.trust -= 3; log(c, "早上來一整冰箱鮮奶都壞了，德哥問你為什麼沒去看。"); } } },
+      ],
+    },
+    coworker_fight: {
+      cat: "urgent", weight: 0.6, fallback: 1, cd: 16, max: 2, cond: (c) => c.stage === "clerk",
+      title: () => "兩個同事在吧台吵起來",
+      body: () => "為了誰要洗杯子，聲音大到客人都在看。",
+      options: [
+        { label: "出面調解", note: "看你的帶人能力", apply: (c) => { if (c.skills.lead + intBetween(c, 0, 30) >= 30) { gain(c, "lead", 3); c.trust += 2; log(c, "你重新排了清潔表，兩個人都接受了。"); } else { c.trust -= 2; log(c, "兩個人都覺得你偏袒對方。"); } } },
+        { label: "裝作沒看到", note: "客人可能留負評", apply: (c) => { if (chance(c, 0.4)) c.fame -= 2; } },
+      ],
+    },
+    order_cancelled: {
+      cat: "urgent", weight: 0.6, fallback: 0, cd: 16, max: 2, cond: (c) => c.stage === "clerk",
+      title: () => "八十杯的團購臨時取消",
+      body: () => "飲料都做好了，對方說活動延期，不想付錢。",
+      options: [
+        { label: "打電話協調", note: "看你的服務能力", apply: (c) => { if (c.skills.service + intBetween(c, 0, 30) >= 40) { c.trust += 3; log(c, "對方同意付一半，下次活動再訂。"); } else { c.trust -= 3; log(c, "對方掛電話，店裡損失三千多。"); } } },
+        { label: "做成買一送一賣掉", note: "名聲 +1；虧一點", apply: (c) => { c.fame += 1; c.trust -= 1; } },
+      ],
+    },
+    label_misprint: {
+      cat: "urgent", weight: 0.5, fallback: 0, cd: 20, max: 1, cond: (c) => c.stage === "clerk",
+      title: () => "杯貼印錯了",
+      body: () => "新一批杯貼把「無糖」印成「微糖」，已經用掉兩百張。",
+      options: [
+        { label: "全部撕掉重貼", note: "體力 −6；老闆信任 +2", apply: (c) => { c.energy -= 6; c.trust += 2; } },
+        { label: "用簽字筆改", note: "客人可能看錯", apply: (c) => { if (chance(c, 0.4)) c.fame -= 2; } },
+      ],
+    },
+    hq_audit: {
+      cat: "urgent", weight: 0.6, fallback: 0, cd: 20, max: 2, cond: (c) => c.stage === "clerk",
+      title: () => "協會督導來店裡",
+      body: () => "督導拿著評分表，從洗手台看到收銀機。",
+      options: [{ label: "陪她看完", note: "看你的營運和服務", apply: (c) => { const sc = c.skills.ops + c.skills.service + intBetween(c, -10, 25); if (sc >= 70) { c.trust += 5; log(c, "督導說這是她看過最乾淨的吧台。"); } else if (sc >= 45) log(c, "督導列了三個要改善的地方。"); else { c.trust -= 5; log(c, "督導給了不及格，德哥被叫去開會。"); } } }],
+    },
+    ig_troll: {
+      cat: "people", weight: 0.5, fallback: 1, cd: 20, max: 2, cond: (c) => c.stage === "clerk",
+      title: () => "店的 IG 被酸了",
+      body: () => "有人在最新貼文留言「漲價又變難喝」，按讚的人越來越多。",
+      options: [
+        { label: "認真回覆，附上改善", note: "服務 +2；可能扭轉風向", apply: (c) => { gain(c, "service", 2); c.fame += chance(c, 0.6) ? 2 : -1; } },
+        { label: "刪掉留言", note: "可能被截圖", apply: (c) => { if (chance(c, 0.5)) { c.fame -= 4; log(c, "有人截圖說店家刪留言，吵得更大。"); } } },
+      ],
+    },
+    new_drink_trial: {
+      cat: "people", weight: 0.6, fallback: 0, cd: 16, max: 2, cond: (c) => c.stage === "clerk",
+      title: () => "德哥要你負責試做新品",
+      body: () => "夏季新品「芒果綠茶冰沙」，下週要上架。",
+      options: [{ label: "接下來", note: "看你的調飲", apply: (c) => { gain(c, "brew", 2); if (c.skills.brew + intBetween(c, 0, 30) >= 50) { c.trust += 5; c.fame += 3; log(c, "新品第一週賣了五百杯。"); } else { c.trust -= 2; log(c, "新品太酸，上架三天就下架。"); } } }],
+    },
+    straw_shortage: {
+      cat: "urgent", weight: 0.5, fallback: 1, cd: 20, max: 2, cond: (c) => c.stage === "clerk",
+      title: () => "粗吸管缺貨",
+      body: () => "廠商說下週才補，珍奶沒有粗吸管很難喝。",
+      options: [
+        { label: "跑三家材料行湊", note: "體力 −6；自己墊 NT$300～600", apply: (c) => { c.energy -= 6; c.savings -= intBetween(c, 3, 6) * 100; c.trust += 3; } },
+        { label: "改附湯匙", note: "客人會抱怨", apply: (c) => { c.fame -= intBetween(c, 1, 3); } },
+      ],
+    },
+    fake_bill: {
+      cat: "urgent", weight: 0.4, fallback: 0, cd: 30, max: 1, cond: (c) => c.stage === "clerk",
+      title: () => "收到一張假鈔",
+      body: () => "關帳時發現一張千元鈔摸起來怪怪的。",
+      options: [
+        { label: "自己賠", note: "−NT$1,000", apply: (c) => { c.savings -= 1000; } },
+        { label: "報警，調監視器", note: "看運氣", apply: (c) => { if (chance(c, 0.3)) log(c, "警察抓到用假鈔的人，你沒被扣錢。"); else { c.savings -= 1000; c.trust -= 1; } } },
+      ],
+    },
+    regular_unhappy: {
+      cat: "people", weight: 0.6, fallback: 1, cd: 14, max: 2, cond: (c) => c.stage === "clerk",
+      title: () => "熟客說最近變難喝",
+      body: () => "每天來的大哥說四季春「沒以前香」。",
+      options: [
+        { label: "當場重泡一壺給他試", note: "看你的調飲", apply: (c) => { if (c.skills.brew + intBetween(c, 0, 30) >= 45) { c.fame += 2; gain(c, "brew", 1); log(c, "你發現是茶葉放太久，換一批就好了。"); } else { c.fame -= 2; log(c, "大哥喝了說還是一樣，之後很少來了。"); } } },
+        { label: "說配方沒變", note: "可能流失熟客", apply: (c) => { if (chance(c, 0.5)) c.fame -= 2; } },
+      ],
+    },
+    new_year_shift: {
+      cat: "people", weight: 0.5, fallback: 1, max: 1, cond: (c) => c.stage === "clerk" && c.week > 10,
+      title: () => "過年要不要上班？",
+      body: () => "除夕到初三，時薪兩倍。媽媽問你今年回不回家。",
+      options: [
+        { label: "上班賺加倍", note: "多 12 小時、雙倍時薪；家裡有點失望", apply: (c) => { c.flags.extraHours = (c.flags.extraHours || 0) + 12; c.savings += 12 * STAGES.clerk.wage; c.energy -= 10; c.trust += 3; } },
+        { label: "回家過年", note: "體力 +15；少 8 小時", apply: (c) => { c.energy += 15; c.flags.skipHours = (c.flags.skipHours || 0) + 8; c.flags.familyOk = 1; } },
+      ],
+    },
+    boss_abroad: {
+      cat: "people", weight: 0.5, fallback: 0, max: 1, cond: (c) => c.stage === "clerk" && c.stageWeeks >= 6,
+      title: () => "德哥出國一週，店交給你",
+      body: () => "他去日本看展，說有事打 LINE，但最好不要有事。",
+      options: [{ label: "撐起來", note: "看你的營運和帶人", apply: (c) => { c.energy -= 10; const sc = c.skills.ops + c.skills.lead + intBetween(c, -10, 30); if (sc >= 55) { c.trust += 8; log(c, "德哥回來看了帳，營業額還多了一點。他說：「可以喔。」"); } else { c.trust -= 5; log(c, "那週叫貨叫錯、工讀生請假，德哥一回來就開始收爛攤子。"); } } }],
+    },
+    cockroach: {
+      cat: "urgent", weight: 0.5, fallback: 0, cd: 20, max: 2, cond: (c) => c.stage === "clerk",
+      title: () => "客人看到蟑螂",
+      body: () => "一隻蟑螂從吧台下面爬出來，正好被排隊的客人看到。",
+      options: [
+        { label: "當場處理，晚上請人除蟲", note: "店裡出錢；你加班 4 小時", apply: (c) => { c.flags.extraHours = (c.flags.extraHours || 0) + 4; c.trust += 2; c.fame -= 1; } },
+        { label: "道歉帶過", note: "名聲可能大跌", apply: (c) => { if (chance(c, 0.5)) { c.fame -= 6; log(c, "那位客人把照片貼上評論，標題是「蟑螂奶茶」。"); } } },
+      ],
+    },
+    tablet_crash: {
+      cat: "urgent", weight: 0.6, fallback: 0, cd: 14, max: 2, cond: (c) => c.stage === "clerk",
+      title: () => "外送平板當機，漏了十張單",
+      body: () => "外送員一個個進來說單子沒做。",
+      options: [{ label: "一邊道歉一邊趕單", note: "看你的服務", apply: (c) => { c.energy -= 6; if (c.skills.service + intBetween(c, 0, 30) >= 45) { c.trust += 2; log(c, "你一張張道歉，還送了每位外送員一杯紅茶。"); } else { c.fame -= 3; log(c, "平台上一口氣多了五則一星評論。"); } } }],
+    },
+    new_hire_mom: {
+      cat: "people", weight: 0.5, fallback: 1, max: 1, cond: (c) => c.stage === "clerk",
+      title: () => "二度就業的姊姊來上班",
+      body: () => "小孩上小學後回來工作，手很巧，但對點餐系統很緊張。",
+      options: [
+        { label: "排時間教她", note: "帶人 +3；體力 −4", apply: (c) => { gain(c, "lead", 3); c.energy -= 4; if (chance(c, 0.5)) { c.trust += 2; log(c, "她學得很快，後來還幫你分擔開店班。"); } } },
+        { label: "讓她自己摸索", note: "", apply: (c) => { if (chance(c, 0.4)) log(c, "她做了兩週就離職了。"); } },
+      ],
+    },
+    fire_inspection: {
+      cat: "urgent", weight: 0.4, fallback: 1, cd: 40, max: 1, cond: (c) => c.stage === "clerk",
+      title: () => "消防安檢",
+      body: () => "滅火器過期，後門被紙箱擋住了。",
+      options: [
+        { label: "馬上整理", note: "加班 4 小時；老闆信任 +3", apply: (c) => { c.flags.extraHours = (c.flags.extraHours || 0) + 4; c.trust += 3; } },
+        { label: "等德哥來處理", note: "可能被罰", apply: (c) => { if (chance(c, 0.5)) { c.trust -= 3; log(c, "店被罰了 NT$6,000，德哥問你那天為什麼不先處理。"); } } },
+      ],
+    },
+    recipe_leak: {
+      cat: "people", weight: 0.4, fallback: 0, max: 1, cond: (c) => c.stage === "clerk" && c.week > 12,
+      title: () => "前同事把配方帶去對手店",
+      body: () => "對面新開的店，賣的鳳梨冰茶跟你們一模一樣。",
+      options: [{ label: "跟德哥一起想對策", note: "看你的調飲和營運", apply: (c) => { if (c.skills.brew + c.skills.ops + intBetween(c, 0, 30) >= 80) { c.trust += 4; c.fame += 2; log(c, "你們改了配方，還推出新口味，客人沒有流失。"); } else { c.fame -= 3; c.trust -= 1; log(c, "那個月營業額掉了一成。"); } } }],
+    },
+    tip_box: {
+      cat: "people", weight: 0.4, fallback: 1, max: 1, cond: (c) => c.stage === "clerk",
+      title: () => "要不要在櫃台放小費箱？",
+      body: () => "同事說隔壁咖啡店放了，一個月多兩千塊。",
+      options: [
+        { label: "跟德哥提議", note: "可能多賺，也可能被客人嫌", apply: (c) => { if (chance(c, 0.5)) { c.savings += intBetween(c, 5, 15) * 100; log(c, "小費箱放了一個月，大家分到一點零用錢。"); } else { c.fame -= 2; log(c, "有客人留言說「買個飲料還要給小費？」。"); } } },
+        { label: "算了", note: "", apply: () => {} },
+      ],
+    },
+    unpaid_overtime: {
+      cat: "people", weight: 0.5, fallback: 1, cd: 26, max: 2, cond: (c) => c.stage === "clerk" && c.week > 8,
+      title: () => "薪水單少算了加班",
+      body: () => "上個月多上的十二個小時，薪水單上沒有。",
+      options: [
+        { label: "去跟德哥說", note: "多半會補，但他可能不高興", apply: (c) => { c.savings += 12 * STAGES.clerk.wage; if (chance(c, 0.3)) { c.trust -= 3; log(c, "德哥補了錢，但說「計較這麼多」。"); } } },
+        { label: "算了，不想吵", note: "", apply: (c) => { c.energy -= 3; } },
+      ],
+    },
+    rainy_weeks: {
+      cat: "urgent", weight: 0.6, fallback: 0, cd: 20, max: 2, cond: (c) => c.stage === "clerk",
+      title: () => "連續下雨，店裡沒客人",
+      body: () => "德哥說這週要減班，每個人少排 8 小時。",
+      options: [
+        { label: "接受", note: "這週少 8 小時", apply: (c) => { c.flags.skipHours = (c.flags.skipHours || 0) + 8; c.energy += 5; } },
+        { label: "主動提出做外送", note: "照時薪；體力 −6", apply: (c) => { c.energy -= 6; c.trust += 2; } },
+      ],
+    },
+    landlord_visit: {
+      cat: "urgent", weight: 0.4, fallback: 0, cd: 30, max: 1, cond: (c) => c.week > 6,
+      title: () => "房東突然要來看房",
+      body: () => "他說要確認有沒有「違規使用電器」，你房裡有一台電磁爐。",
+      options: [
+        { label: "老實說", note: "可能被罰，也可能沒事", apply: (c) => { if (chance(c, 0.5)) log(c, "房東說下次注意就好。"); else { c.savings -= 1000; log(c, "房東扣了 NT$1,000 押金。"); } } },
+        { label: "藏起來", note: "", apply: (c) => { if (chance(c, 0.3)) { c.savings -= 2000; log(c, "房東在床底下翻到了，扣了 NT$2,000。"); } } },
+      ],
+    },
+    credit_card: {
+      cat: "people", weight: 0.4, fallback: 1, max: 1, cond: (c) => c.week > 6,
+      title: () => "銀行打來邀你辦信用卡",
+      body: () => "首刷禮是一台藍牙耳機，額度五萬。",
+      options: [
+        { label: "辦了，順便買想要的東西", note: "之後幾週帳單會來", apply: (c) => { c.livingPlus = (c.livingPlus || 0) + 400; c.energy += 5; log(c, "刷了一台新手機，每週多了 NT$400 的分期。"); } },
+        { label: "不用", note: "", apply: () => {} },
+      ],
+    },
+    classmate_flex: {
+      cat: "people", weight: 0.5, fallback: 1, cd: 26, max: 2, cond: (c) => c.week > 5,
+      title: () => "同學會",
+      body: () => "有人在科技廠月薪五萬，有人在讀研究所。大家問你在做什麼。",
+      options: [
+        { label: "說你在學開店", note: "體力 +4；也可能被酸", apply: (c) => { if (chance(c, 0.6)) { c.energy += 4; log(c, "有同學說他很羨慕你知道自己要什麼。"); } else { c.energy -= 6; log(c, "有人笑說「做飲料喔？」，你笑不太出來。"); } } },
+        { label: "藉口有班沒去", note: "", apply: () => {} },
+      ],
+    },
+    hometown_job: {
+      cat: "people", weight: 0.4, fallback: 1, max: 1, cond: (c) => c.week > 12,
+      title: () => "家鄉的工廠在找人",
+      body: () => "舅舅說可以介紹你去，月薪三萬五，住家裡不用房租。",
+      options: [
+        { label: "留下來繼續拚", note: "體力 +3（你更確定自己要什麼）", apply: (c) => { c.energy += 3; } },
+        { label: "認真考慮了一週", note: "這週工作分心，老闆信任 −2", apply: (c) => { c.trust -= 2; log(c, "你最後還是決定留下來。"); } },
+      ],
+    },
+    scratch_card: {
+      cat: "people", weight: 0.4, fallback: 1, cd: 16, max: 2,
+      title: () => "彩券行的刮刮樂",
+      body: () => "下班經過彩券行，櫥窗貼著「本店開出百萬大獎」。",
+      options: [
+        { label: "買一張 NT$500", note: "看運氣", apply: (c) => { const v = pick(c, [0, 0, 0, 0, 500, 1000, 2000, 10000]); c.savings += v - 500; log(c, v ? `刮中 NT$${v}！` : "什麼都沒中。"); } },
+        { label: "不買", note: "", apply: () => {} },
+      ],
+    },
+    insurance_due: {
+      cat: "urgent", weight: 0.4, fallback: 0, cd: 50, max: 1, cond: (c) => c.week > 8,
+      title: () => "機車強制險到期",
+      body: () => "沒保險被攔到要罰錢，出事更麻煩。",
+      options: [
+        { label: "續保", note: "NT$600", apply: (c) => { c.savings -= 600; } },
+        { label: "下個月再說", note: "", apply: (c) => { if (chance(c, 0.3)) { c.savings -= 3000; log(c, "隔週臨檢就被抓到，罰了 NT$3,000。"); } } },
+      ],
+    },
+    phone_bill: {
+      cat: "urgent", weight: 0.4, fallback: 0, cd: 30, max: 1,
+      title: () => "電信帳單爆表",
+      body: () => "上個月吃到飽到期沒發現，帳單三千多。",
+      options: [
+        { label: "照繳，改方案", note: "NT$3,200", apply: (c) => { c.savings -= 3200; } },
+        { label: "打客服爭取", note: "看你的口才", apply: (c) => { if (c.skills.service + intBetween(c, 0, 40) >= 40) { c.savings -= 800; log(c, "客服幫你降成 NT$800。"); } else { c.savings -= 3200; c.energy -= 3; log(c, "講了四十分鐘，還是要全繳。"); } } },
+      ],
+    },
+    grandma_hospital: {
+      cat: "urgent", weight: 0.4, fallback: 0, max: 1, cond: (c) => c.week > 10,
+      title: () => "阿嬤住院了",
+      body: () => "家裡說不嚴重，但阿嬤一直問你什麼時候回來。",
+      options: [
+        { label: "請兩天假回去", note: "少 16 小時；車錢 NT$1,200；家裡很感動", apply: (c) => { c.flags.skipHours = (c.flags.skipHours || 0) + 16; c.savings -= 1200; c.flags.familyOk = 1; c.trust -= 1; } },
+        { label: "視訊就好", note: "心裡很掛念，體力 −6", apply: (c) => { c.energy -= 6; } },
+      ],
+    },
+    my_birthday: {
+      cat: "people", weight: 0.4, fallback: 1, max: 1, cond: (c) => c.week > 4,
+      title: () => "你的生日",
+      body: () => "同事偷偷買了蛋糕，晚上大家問要不要去唱歌。",
+      options: [
+        { label: "去唱！", note: "−NT$800；體力 +8", apply: (c) => { c.savings -= 800; c.energy += 8; c.friend = (c.friend || 0) + 1; } },
+        { label: "吃完蛋糕就回家睡", note: "體力 +4", apply: (c) => { c.energy += 4; } },
+      ],
+    },
+    concert_ticket: {
+      cat: "people", weight: 0.4, fallback: 1, max: 1,
+      title: () => "喜歡的樂團來開演唱會",
+      body: () => "搶到兩張票，但那天是週六晚班。",
+      options: [
+        { label: "請假去", note: "−NT$2,800；少 6 小時；體力 +12", apply: (c) => { c.savings -= 2800; c.flags.skipHours = (c.flags.skipHours || 0) + 6; c.energy += 12; c.trust -= 1; } },
+        { label: "把票轉賣", note: "賺一點，但有點難過", apply: (c) => { c.savings += intBetween(c, 2, 8) * 100; c.energy -= 3; } },
+      ],
+    },
+    first_date: {
+      cat: "people", weight: 0.4, fallback: 1, max: 2, cond: (c) => c.week > 6,
+      title: () => "交友軟體配對成功",
+      body: () => "對方約你週日去吃早午餐。",
+      options: [
+        { label: "去", note: "−NT$600～1,500；結果看緣分", apply: (c) => { c.savings -= intBetween(c, 6, 15) * 100; if (chance(c, 0.5)) { c.energy += 8; log(c, "聊得很開心，約好下次去看電影。"); } else { c.energy -= 4; log(c, "對方一直看手機，吃完就說有事先走。"); } } },
+        { label: "說最近太忙", note: "", apply: () => {} },
+      ],
+    },
+    health_scare: {
+      cat: "urgent", weight: 0.4, fallback: 0, max: 1, cond: (c) => c.week > 8,
+      title: () => "健檢報告出現紅字",
+      body: () => "醫生說你的肝指數偏高，叫你少熬夜、多休息。",
+      options: [
+        { label: "這幾週少排一點班", note: "少 8 小時；體力 +10", apply: (c) => { c.flags.skipHours = (c.flags.skipHours || 0) + 8; c.energy += 10; } },
+        { label: "沒事，年輕撐得住", note: "可能真的倒下", apply: (c) => { if (chance(c, 0.35)) c.inbox.push(ev(c, "sick")); } },
+      ],
+    },
+    sneaker_drop: {
+      cat: "people", weight: 0.4, fallback: 1, max: 1,
+      title: () => "想要很久的球鞋開賣",
+      body: () => "限量款，原價 NT$4,800，轉手可能更貴。",
+      options: [
+        { label: "排隊買", note: "−NT$4,800；體力 +6", apply: (c) => { c.savings -= 4800; c.energy += 6; } },
+        { label: "存錢要緊", note: "", apply: () => {} },
+      ],
+    },
+    best_man: {
+      cat: "people", weight: 0.3, fallback: 1, max: 1, cond: (c) => c.week > 8,
+      title: () => "好朋友要你當伴郎",
+      body: () => "要租西裝、包紅包，婚禮前一晚還要幫忙佈置。",
+      options: [
+        { label: "當然好", note: "−NT$4,000～6,000；少 8 小時；體力 +6", apply: (c) => { c.savings -= intBetween(c, 4, 6) * 1000; c.flags.skipHours = (c.flags.skipHours || 0) + 8; c.energy += 6; c.friend = (c.friend || 0) + 1; } },
+        { label: "說要上班", note: "朋友有點失望", apply: (c) => { c.energy -= 4; } },
+      ],
+    },
+    volunteer: {
+      cat: "people", weight: 0.4, fallback: 1, cd: 26, max: 1,
+      title: () => "社區食物銀行找志工",
+      body: () => "週日上午幫忙整理物資。",
+      options: [
+        { label: "去幫忙", note: "體力 −4；名聲 +2；帶人 +1", apply: (c) => { c.energy -= 4; c.fame += 2; gain(c, "lead", 1); } },
+        { label: "這週太累", note: "", apply: () => {} },
+      ],
+    },
+    stray_dog: {
+      cat: "people", weight: 0.3, fallback: 1, max: 1, cond: (c) => c.week > 6,
+      title: () => "流浪狗一直跟你回家",
+      body: () => "牠很瘦，在你家樓下等了三天。",
+      options: [
+        { label: "收養牠", note: "結紮打疫苗 NT$3,000；之後每週 +NT$200；體力 +5", apply: (c) => { c.savings -= 3000; c.livingPlus = (c.livingPlus || 0) + 200; c.energy += 5; log(c, "你幫牠取名叫「珍珠」。"); } },
+        { label: "聯絡中途之家", note: "", apply: () => {} },
+      ],
+    },
+    phone_left_bus: {
+      cat: "urgent", weight: 0.4, fallback: 0, cd: 40, max: 1,
+      title: () => "手機忘在公車上",
+      body: () => "下車三分鐘才發現。",
+      options: [{ label: "打給客運失物招領", note: "看運氣", apply: (c) => { if (chance(c, 0.5)) log(c, "司機撿到了，隔天去總站領回來。"); else { c.savings -= intBetween(c, 4, 9) * 1000; log(c, "手機沒找回來，只好買一支新的。"); } } }],
+    },
+    earthquake: {
+      cat: "urgent", weight: 0.3, fallback: 1, max: 1,
+      title: () => "半夜的地震",
+      body: () => "搖得很大，店裡的玻璃杯和糖漿罐可能都摔了。",
+      options: [
+        { label: "一早去店裡收拾", note: "加班 6 小時；老闆信任 +4", apply: (c) => { c.flags.extraHours = (c.flags.extraHours || 0) + 6; c.trust += 4; c.energy -= 6; } },
+        { label: "照平常時間上班", note: "", apply: () => {} },
+      ],
+    },
+    food_poison: {
+      cat: "urgent", weight: 0.4, fallback: 0, cd: 30, max: 1,
+      title: () => "吃壞肚子",
+      body: () => "夜市的蚵仔煎好像不太新鮮，你跑了一整晚廁所。",
+      options: [
+        { label: "請假看醫生", note: "NT$500；少 8 小時", apply: (c) => { c.savings -= 500; c.flags.skipHours = (c.flags.skipHours || 0) + 8; c.energy -= 6; } },
+        { label: "吃藥硬撐", note: "體力 −15", apply: (c) => { c.energy -= 15; } },
+      ],
+    },
+    invest_seminar: {
+      cat: "people", weight: 0.3, fallback: 1, max: 1, cond: (c) => c.savings > 20000,
+      title: () => "朋友帶你去投資說明會",
+      body: () => "講師說每月穩賺 5%，入門方案 NT$20,000。",
+      options: [
+        { label: "投了", note: "……", apply: (c) => { c.savings -= 20000; if (chance(c, 0.15)) { c.savings += 26000; log(c, "三個月後真的領回 NT$26,000，你自己也嚇到。"); } else log(c, "兩個月後公司人去樓空，錢拿不回來了。"); } },
+        { label: "這聽起來像詐騙", note: "", apply: () => {} },
+      ],
+    },
+    parents_visit: {
+      cat: "people", weight: 0.4, fallback: 0, max: 1, cond: (c) => c.week > 8,
+      title: () => "爸媽北上來看你",
+      body: () => "他們想看看你上班的地方，還說要點一杯你做的飲料。",
+      options: [{ label: "帶他們去店裡", note: "看德哥給不給面子", apply: (c) => { c.flags.familyOk = 1; c.energy += 6; if (chance(c, 0.7)) { c.trust += 2; log(c, "德哥跟爸媽說你是店裡最認真的。媽媽眼眶有點紅。"); } else log(c, "那天店裡太忙，爸媽喝完就自己去逛街了。"); } }],
+    },
+    renovation_noise: {
+      cat: "people", weight: 0.4, fallback: 0, cd: 30, max: 1,
+      title: () => "隔壁在裝潢",
+      body: () => "每天早上八點開始敲牆，你夜班回來根本睡不著。",
+      options: [
+        { label: "買耳塞和眼罩", note: "NT$300；體力 −4", apply: (c) => { c.savings -= 300; c.energy -= 4; } },
+        { label: "去網咖補眠", note: "NT$600；體力 −2", apply: (c) => { c.savings -= 600; c.energy -= 2; } },
+      ],
+    },
+    license_tax: {
+      cat: "urgent", weight: 0.3, fallback: 0, max: 1, cond: (c) => c.week > 15,
+      title: () => "牌照稅和燃料費帳單",
+      body: () => "繳費期限是這週五。",
+      options: [{ label: "繳", note: "NT$450～900", apply: (c) => { c.savings -= intBetween(c, 45, 90) * 10; } }],
+    },
+    back_pain: {
+      cat: "urgent", weight: 0.5, fallback: 0, cd: 20, max: 2, cond: (c) => c.week > 6,
+      title: () => "腰痛到彎不下去",
+      body: () => "長時間站吧台、騎車，腰終於抗議了。",
+      options: [
+        { label: "去做復健", note: "NT$600～1,500；體力 +6", apply: (c) => { c.savings -= intBetween(c, 6, 15) * 100; c.energy += 6; } },
+        { label: "貼藥布撐著", note: "體力 −8", apply: (c) => { c.energy -= 8; } },
+      ],
+    },
+    cafe_partner: {
+      cat: "people", weight: 0.3, fallback: 1, max: 1, cond: (c) => c.week > 14 && c.savings > 30000,
+      title: () => "朋友找你合夥開咖啡店",
+      body: () => "他說只差 NT$30,000 的股份，你負責飲料，他負責店面。",
+      options: [
+        { label: "投資", note: "可能大賺，也可能血本無歸", apply: (c) => { c.savings -= 30000; const r = rand(c); if (r < 0.25) { c.savings += 60000; log(c, "咖啡店撐過第一年，朋友把你的股份用 NT$60,000 買回去。"); } else if (r < 0.55) { c.savings += 25000; log(c, "咖啡店撐了半年收掉，拿回 NT$25,000。"); } else log(c, "咖啡店三個月就收了，錢都賠進去。"); } },
+        { label: "專心在現在的工作", note: "", apply: () => {} },
+      ],
+    },
     promote_clerk: {
       cat: "people", weight: 0, fallback: -1,
       title: () => "德哥：「要不要轉正職店員？」",

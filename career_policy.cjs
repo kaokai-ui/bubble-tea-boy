@@ -16,14 +16,15 @@ function careless(c, rnd) {
 }
 
 for (const mode of ["認真玩", "隨便玩"]) {
-  const r = { clerk: [], manager: [], fail: {}, demoted: 0, testFail: 0, events: new Set() };
+  const r = { clerk: [], manager: [], fail: {}, demoted: 0, testFail: 0, events: new Set(), shown: 0, repeats: 0 };
   for (let i = 0; i < N; i++) {
     const c = C.newCareer("測試", 5000 + i * 104729);
     let s = (i * 2654435761) >>> 0;
     const rnd = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
     let wasClerk = false;
+    const seen = new Set(), counted = new Set(), mine = new Set();
     while (!c.over && !c.promoted && c.week < 156) {
-      c.inbox.forEach((x) => r.events.add(x.id));
+      c.inbox.forEach((x) => { r.events.add(x.id); if (counted.has(x.uid) || /^promote_|^boss_warning$/.test(x.id)) return; counted.add(x.uid); r.shown++; if (seen.has(x.id)) r.repeats++; seen.add(x.id); });
       if (mode === "認真玩") C.autoPlay(c); else careless(c, rnd);
       if (c.promoted) break;
       C.endWeek(c);
@@ -35,5 +36,5 @@ for (const mode of ["認真玩", "隨便玩"]) {
     else { const k = c.over ? c.over.title : "三年還沒升店長"; r.fail[k] = (r.fail[k] || 0) + 1; }
   }
   const avg = (a) => (a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length) : "-");
-  console.log(`【${mode}】升店員 ${r.clerk.length}/${N}（平均第 ${avg(r.clerk)} 週）· 升店長 ${r.manager.length}/${N}（平均第 ${avg(r.manager)} 週）· 被降回外送 ${r.demoted} 次 · 升職考驗沒過 ${r.testFail} 次 · 失敗 ${JSON.stringify(r.fail)} · 出現過的事件 ${r.events.size} 種`);
+  console.log(`【${mode}】升店員 ${r.clerk.length}/${N}（平均第 ${avg(r.clerk)} 週）· 升店長 ${r.manager.length}/${N}（平均第 ${avg(r.manager)} 週）· 被降回外送 ${r.demoted} 次 · 升職考驗沒過 ${r.testFail} 次 · 失敗 ${JSON.stringify(r.fail)} · 出現過的事件 ${r.events.size} 種 · 每局遇到的事件裡重複的比例 ${Math.round((r.repeats / Math.max(1, r.shown)) * 100)}%`);
 }
