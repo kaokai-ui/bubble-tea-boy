@@ -106,6 +106,8 @@
   // 店長模式不會出現的事件（品牌層級、老闆的事）
   const OWNER_EVENTS = ["milk_price", "fruit_glut", "plastic_ban", "min_wage", "mall_counter", "delivery_offer", "delivery_fee_up", "franchise", "investor", "price_war", "copycat", "tea_price", "landlord", "chairman_health", "loan_offer", "expansion_chaos", "store_losing", "bank_review", "tea_expo", "corporate_deal", "pos_upgrade", "central_kitchen", "award", "landlord_sells", "supplier_batch", "syrup_scandal", "year_end_party"];
   const BUYOUT_PRICE = 2500000;
+  const BUYOUT_DOWN = 100000; // 最低自備款：存越少，銀行貸越多、董事長階段越辛苦
+  const BUYOUT_WEEKS = 14; // 劇本二每升一階多 2 週：小弟 10、店員 12、店長 14
   const MANAGER_SALARY = 42000;
 
   const CAMPAIGNS = {
@@ -1274,8 +1276,8 @@
     dynamicOptions: (s) => {
       const loan = Math.max(0, BUYOUT_PRICE - s.career.savings);
       return [
-        { label: "買下品牌，當董事長", note: s.career.savings >= BUYOUT_PRICE * 0.2 ? `存款全部投入${loan ? `，向銀行貸 ${fmtMoney(loan)}` : ""}；接下來兩年看你的了` : `自備款要 ${fmtMoney(BUYOUT_PRICE * 0.2)} 以上，銀行才肯貸`, apply: (s) => { if (s.career.savings >= BUYOUT_PRICE * 0.2) toChairman(s); else s.flags.retireAgain = s.week + 8; } },
-        { label: "再存一陣子錢", note: "德哥說兩個月後再談", apply: (s) => { s.flags.retireAgain = s.week + 8; } },
+        { label: "買下品牌，當董事長", note: s.career.savings >= BUYOUT_DOWN ? `存款全部投入${loan ? `，向銀行貸 ${fmtMoney(loan)}（每週還本 NT$13,000 加利息）` : ""}；接下來兩年看你的了` : `自備款要 ${fmtMoney(BUYOUT_DOWN)} 以上，銀行才肯貸`, apply: (s) => { if (s.career.savings >= BUYOUT_DOWN) toChairman(s); else s.flags.retireAgain = s.week + 8; } },
+        { label: "再當一陣子店長，多存點錢", note: "貸款少一點比較穩；德哥說一個月後再談", apply: (s) => { s.flags.retireAgain = s.week + 4; } },
       ];
     },
     options: [],
@@ -1296,14 +1298,14 @@
       out.push({ kind: "owner", text: "店裡現金不夠付帳，德哥補了 NT$300,000 週轉金，臉色不太好看。" });
     }
     const weeks = s.week - c.managerWeek;
-    if (weeks === 20 && s.stores.length === 1) {
+    if (weeks === 8 && s.stores.length === 1) {
       // 德哥開第二家店（老闆出錢），你負責兩家
       const offer = makeLocationOffer(s, pick(s, ["office", "school", "night"]));
       const st = makeStore(s, offer, true);
       s.stores.push(st);
       addNews(s, `德哥在${sname(st)}開了第二家店，也交給你管。`);
     }
-    if (weeks >= 40 && c.trust >= 65 && c.savings >= BUYOUT_PRICE * 0.2 && (s.flags.retireAgain || 0) <= s.week && !s.inbox.some((x) => x.id === "owner_retire")) s.inbox.push(eventInstance(s, "owner_retire", {}, true));
+    if (weeks >= BUYOUT_WEEKS && c.trust >= 65 && c.savings >= BUYOUT_DOWN && (s.flags.retireAgain || 0) <= s.week && !s.inbox.some((x) => x.id === "owner_retire")) s.inbox.push(eventInstance(s, "owner_retire", {}, true));
   }
 
   function toChairman(s) {
@@ -1711,7 +1713,7 @@
   const api = {
     LOCATIONS, PRODUCTS, ACTIONS, CAMPAIGNS, ROLES, TOTAL_WEEKS, BASE_HOURS, MAX_HOURS,
     calendar, offersForStart, newGame, view, planAction, unplan, canPlan, resolveEvent, endWeek,
-    hoursUsed, storeById, staffById, sname, fmtMoney, autoPlay, normalize, actionVisible, productName, totalWeeks, BUYOUT_PRICE, repeatLast,
+    hoursUsed, storeById, staffById, sname, fmtMoney, autoPlay, normalize, actionVisible, productName, totalWeeks, BUYOUT_PRICE, BUYOUT_DOWN, BUYOUT_WEEKS, repeatLast,
   };
   root.TeaSim = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;

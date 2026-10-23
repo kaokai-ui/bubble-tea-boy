@@ -23,6 +23,10 @@
   const MAX_HOURS = 64;
   const LIVING = 4500; // 每週房租分攤、吃飯、機車油錢
 
+  const MISHAPS = {
+    runner: ["送錯兩棟大樓，客人打電話到店裡罵。", "整袋飲料忘了插吸管，被留了負評。", "騎過頭三個路口，飲料送到都退冰了。", "把甜度貼紙貼反，客人喝到全糖。"],
+    clerk: ["連續做錯三杯甜度，熟客臉色很難看。", "封膜機沒對好，一整排飲料漏出來。", "收銀找錯錢，少了一張千元鈔。", "把鮮奶當成豆漿加進去，只好整杯重做。"],
+  };
   const STAGES = {
     runner: { name: "外送小弟", wage: 190 },
     clerk: { name: "店員", wage: 205 },
@@ -121,7 +125,7 @@
       title: () => "急煞，整袋飲料翻了",
       body: () => "前面的車突然停下，你閃過了，但掛在車上的六杯飲料倒了一半。",
       options: [
-        { label: "自己出錢重做（NT$420）", note: "老闆會記得", apply: (c) => { c.savings -= 420; c.trust += 3; } },
+        { label: "自己出錢重做（NT$300～700）", note: "老闆可能記得", apply: (c) => { c.savings -= intBetween(c, 3, 7) * 100; c.trust += intBetween(c, 1, 4); } },
         { label: "回店裡老實說", note: "老闆嘆氣，店裡吸收", apply: (c) => { c.trust -= 1; } },
       ],
     },
@@ -138,7 +142,7 @@
       cat: "people", weight: 1.2, fallback: 0, cd: 16, max: 2, cond: (c) => c.fame >= 6,
       title: () => "常客阿姨送你一盒水果",
       body: () => "每週都點三杯鮮奶茶的阿姨說，你是她遇過最有禮貌的外送員。",
-      options: [{ label: "謝謝阿姨", note: "名聲 +2", apply: (c) => { c.fame += 2; } }],
+      options: [{ label: "謝謝阿姨", note: "名聲 +1～3", apply: (c) => { c.fame += intBetween(c, 1, 3); } }],
     },
     scooter: {
       cat: "urgent", weight: 1.5, fallback: 0, cd: 14, max: 2, cond: (c) => c.stage === "runner" && (c.flags.scooterOk || 0) <= c.week,
@@ -209,7 +213,7 @@
       title: () => "客人在櫃台大聲罵人",
       body: () => "一位客人說飲料太甜，要求全部退錢，還拿手機開始錄影。",
       options: [
-        { label: "道歉並重做一杯", note: "服務 +、名聲 +1", apply: (c) => { gain(c, "service", 2); c.fame += 1; } },
+        { label: "道歉並重做一杯", note: "看客人買不買單", apply: (c) => { gain(c, "service", 2); if (chance(c, 0.7)) c.fame += 1; else { c.fame -= 1; log(c, "重做了，客人還是把影片上傳，留言兩極。"); } } },
         { label: "照規定只換不退", note: "客人可能留負評", apply: (c) => { if (chance(c, 0.5)) { c.fame -= 2; log(c, "那位客人在網路上留了一星評論。"); } else c.trust += 1; } },
       ],
     },
@@ -280,7 +284,7 @@
       cat: "people", weight: 0.8, fallback: 0, cd: 12, max: 3, cond: (c) => c.fame >= 10,
       title: () => "常客跟你聊起他的故事",
       body: (c) => ["每天下午來的大學生說他考上研究所了，要請全店喝飲料。", "附近的計程車司機說他兒子也在飲料店打工，叫你們互相照顧。", "常來的阿嬤說她年輕時也在茶行工作，教你怎麼聞茶葉。"][c.week % 3],
-      options: [{ label: "聽他說完", note: "名聲 +1、服務 +1", apply: (c) => { c.fame += 1; gain(c, "service", 1); } }],
+      options: [{ label: "聽他說完", note: "名聲、服務 +", apply: (c) => { c.fame += intBetween(c, 0, 2); gain(c, "service", intBetween(c, 1, 2)); } }],
     },
     inspection_day: {
       cat: "urgent", weight: 0.8, fallback: 1, cd: 14, max: 2, cond: (c) => c.stage === "clerk",
@@ -306,12 +310,464 @@
         { label: "等德哥處理", note: "", apply: () => {} },
       ],
     },
+    // 10/24 加：事件量約三倍，結果依能力與運氣上下變動（使用者試玩回饋：太順、太單調）
+    boss_warning: {
+      cat: "people", weight: 0, fallback: 0,
+      title: () => "德哥把你叫到後面",
+      body: (c) => `「最近怎麼了？客人跟同事都在講。」德哥說再這樣下去，${c.stage === "clerk" ? "只好讓你回去跑外送" : "他只能請你走"}。`,
+      options: [
+        { label: "老實說最近太累，會調整", note: "老闆信任 +3～6", apply: (c) => { c.trust += intBetween(c, 3, 6); } },
+        { label: "說是同事害的", note: "看德哥信不信", apply: (c) => { if (chance(c, 0.35)) c.trust += 4; else { c.trust -= 3; log(c, "德哥看了監視器，臉更臭了。"); } } },
+      ],
+    },
+    flat_tire: {
+      cat: "urgent", weight: 1, fallback: 1, cd: 10, max: 3, cond: (c) => c.stage === "runner",
+      title: () => "外送途中爆胎",
+      body: () => "後輪壓到釘子，車上還有四杯飲料要送。",
+      options: [
+        { label: "找路邊機車行補胎", note: "NT$300～700；飲料可能遲到", apply: (c) => { c.savings -= intBetween(c, 3, 7) * 100; if (chance(c, 0.5)) c.trust -= 2; } },
+        { label: "牽著車走去送", note: "體力 −6～12；客人可能感動", apply: (c) => { c.energy -= intBetween(c, 6, 12); if (chance(c, 0.4)) { c.fame += 2; log(c, "客人看到你牽車送飲料，多給了 NT$200 小費。"); c.savings += 200; } else c.trust -= 1; } },
+      ],
+    },
+    dog_chase: {
+      cat: "urgent", weight: 0.8, fallback: 0, cd: 12, max: 2, cond: (c) => c.stage === "runner",
+      title: () => "巷子裡衝出三隻狗",
+      body: () => "這條是捷徑，但每次經過都有狗追。",
+      options: [
+        { label: "繞遠路", note: "這單遲到，老闆信任 −1～2", apply: (c) => { c.trust -= intBetween(c, 1, 2); } },
+        { label: "加速衝過去", note: "有機會摔車", apply: (c) => { if (chance(c, 0.3)) { const v = intBetween(c, 5, 15) * 100; c.savings -= v; c.energy -= 10; log(c, `為了閃狗摔車，手肘擦傷，看醫生加修車 NT$${v}。`); } } },
+      ],
+    },
+    elevator_ban: {
+      cat: "people", weight: 0.9, fallback: 1, cd: 10, max: 3, cond: (c) => c.stage === "runner",
+      title: () => "管理員不讓外送員上樓",
+      body: () => "客人在 18 樓，管理員說外送一律放一樓，客人卻堅持要送上去。",
+      options: [
+        { label: "爬樓梯送上去", note: "體力 −8；客人可能大方", apply: (c) => { c.energy -= 8; if (chance(c, 0.5)) { const v = intBetween(c, 1, 5) * 100; c.savings += v; c.fame += 2; log(c, `18 樓的客人塞了 NT$${v} 給你。`); } } },
+        { label: "請客人下樓拿", note: "客人可能給負評", apply: (c) => { if (chance(c, 0.45)) { c.fame -= intBetween(c, 1, 3); log(c, "客人給了一顆星：「外送員態度很差」。"); } } },
+      ],
+    },
+    big_tip: {
+      cat: "people", weight: 0.7, fallback: 0, cd: 10, max: 3, cond: (c) => c.stage === "runner" && c.fame >= 4,
+      title: () => "豪爽的客人",
+      body: () => "一位剛簽下大案子的業務一口氣點了三十杯，說要謝謝你上次準時送到。",
+      options: [{ label: "謝謝老闆", note: "小費多少看他心情", apply: (c) => { const v = pick(c, [300, 500, 800, 1200, 2000]); c.savings += v; c.fame += 1; log(c, `收到 NT$${v} 小費。`); } }],
+    },
+    rating_drop: {
+      cat: "urgent", weight: 0.8, fallback: 1, cd: 12, max: 2, cond: (c) => c.stage === "runner" && c.week > 3,
+      title: () => "外送平台評分掉到 4.2",
+      body: () => "平台說評分再掉，店家會被排到搜尋結果後面。德哥要你想辦法。",
+      options: [
+        { label: "每單附手寫感謝卡", note: "服務 +2；體力 −4；評分可能回來", apply: (c) => { gain(c, "service", 2); c.energy -= 4; if (chance(c, 0.6)) { c.fame += 3; c.trust += 2; } } },
+        { label: "評分本來就看運氣", note: "老闆信任 −2～4", apply: (c) => { c.trust -= intBetween(c, 2, 4); c.fame -= 1; } },
+      ],
+    },
+    police_check: {
+      cat: "urgent", weight: 0.7, fallback: 0, cd: 16, max: 2, cond: (c) => c.stage === "runner",
+      title: () => "路口臨檢",
+      body: () => "警察攔下你，說要看行照和車燈。",
+      options: [{ label: "配合檢查", note: "車況不好可能被罰", apply: (c) => { if ((c.flags.scooterOk || 0) > c.week || chance(c, 0.5)) log(c, "臨檢沒事，警察還叫你騎慢一點。"); else { const v = pick(c, [600, 900, 1200, 1800]); c.savings -= v; log(c, `方向燈壞了，被開罰 NT$${v}。`); } } }],
+    },
+    order_stolen: {
+      cat: "urgent", weight: 0.7, fallback: 1, cd: 14, max: 2, cond: (c) => c.stage === "runner",
+      title: () => "放在警衛室的飲料不見了",
+      body: () => "客人說沒拿到，警衛說他沒看到。",
+      options: [
+        { label: "自己出錢補送", note: "NT$300～700；老闆信任 +2", apply: (c) => { c.savings -= intBetween(c, 3, 7) * 100; c.trust += 2; } },
+        { label: "跟客人說不是我的問題", note: "可能吵起來", apply: (c) => { if (chance(c, 0.5)) { c.fame -= intBetween(c, 1, 3); c.trust -= 2; log(c, "客人打電話到店裡客訴，德哥幫你道歉。"); } } },
+      ],
+    },
+    plum_rain: {
+      cat: "people", weight: 0.8, fallback: 1, cd: 20, max: 2, cond: (c) => c.stage === "runner",
+      title: () => "梅雨下了一整週",
+      body: () => "外送單變多，但路很滑。德哥問你要不要多跑幾單。",
+      options: [
+        { label: "多跑 6 小時", note: "照時薪＋小費 NT$300～900；有機會滑倒", apply: (c) => { c.flags.extraHours = (c.flags.extraHours || 0) + 6; c.savings += intBetween(c, 3, 9) * 100; c.energy -= 8; if (chance(c, 0.2)) { c.savings -= 1500; c.energy -= 10; log(c, "雨天滑倒，機車修了 NT$1,500。"); } } },
+        { label: "照原本的班", note: "", apply: () => {} },
+      ],
+    },
+    phone_broke: {
+      cat: "urgent", weight: 0.6, fallback: 1, cd: 30, max: 1,
+      title: () => "手機摔壞了",
+      body: () => "螢幕碎成蜘蛛網，接單軟體點不太到。",
+      options: [
+        { label: "買一支新的", note: "NT$6,000～12,000", apply: (c) => { c.savings -= intBetween(c, 6, 12) * 1000; } },
+        { label: "送修就好", note: "NT$2,000；有可能修不好", apply: (c) => { c.savings -= 2000; if (chance(c, 0.4)) { c.savings -= 5000; c.trust -= 1; log(c, "修完三天又壞，最後還是買了一支 NT$5,000 的二手機。"); } } },
+      ],
+    },
+    parking_ticket: {
+      cat: "urgent", weight: 0.7, fallback: 0, cd: 12, max: 3, cond: (c) => c.stage === "runner",
+      title: () => "收到違停罰單",
+      body: () => "上週在大樓前停了兩分鐘，被檢舉了。",
+      options: [
+        { label: "乖乖繳", note: "NT$600", apply: (c) => { c.savings -= 600; } },
+        { label: "上網申訴", note: "成功不用繳，失敗要繳 NT$900", apply: (c) => { if (chance(c, 0.45)) log(c, "申訴成功，罰單撤銷。"); else { c.savings -= 900; log(c, "申訴被駁回，還多了逾期的錢。"); } } },
+      ],
+    },
+    traffic_accident: {
+      cat: "urgent", weight: 0.5, fallback: 1, cd: 30, max: 1, cond: (c) => c.stage === "runner" && c.week > 3,
+      title: () => "跟轎車擦撞",
+      body: () => "轎車右轉沒打方向燈，你連人帶車倒在路邊。腳踝腫起來了。",
+      options: [
+        { label: "當場和解", note: "對方賠一點；你得休息幾天", apply: (c) => { c.savings += intBetween(c, 1, 5) * 1000; c.energy -= 20; c.flags.skipHours = (c.flags.skipHours || 0) + 10; } },
+        { label: "報警走保險", note: "拖比較久；結果看運氣", apply: (c) => { c.energy -= 20; c.flags.skipHours = (c.flags.skipHours || 0) + 14; if (chance(c, 0.5)) { c.savings += 8000; log(c, "保險理賠下來了，NT$8,000。"); } else { c.savings -= 3000; log(c, "肇責認定你也有責任，自己付了 NT$3,000 醫藥費。"); } } },
+      ],
+    },
+    wrong_sugar: {
+      cat: "urgent", weight: 1, fallback: 0, cd: 10, max: 3, cond: (c) => c.stage === "clerk",
+      title: () => "一整張團購單糖度做錯",
+      body: () => "四十杯的公司訂單，你把「微糖」看成「半糖」，客人已經在電話裡發火。",
+      options: [
+        { label: "全部重做、親自送去道歉", note: "體力 −10；結果看你的調飲", apply: (c) => { c.energy -= 10; if (c.skills.brew + intBetween(c, 0, 30) >= 50) { c.trust += 3; c.fame += 2; log(c, "重做得比原本還好喝，那家公司下個月又訂了。"); } else { c.trust -= 3; log(c, "重做還是被嫌太甜，那家公司改訂別家。"); } } },
+        { label: "打折給客人", note: "老闆信任 −2～4", apply: (c) => { c.trust -= intBetween(c, 2, 4); } },
+      ],
+    },
+    sealer_broke: {
+      cat: "urgent", weight: 0.9, fallback: 1, cd: 14, max: 2, cond: (c) => c.stage === "clerk",
+      title: () => "封口機壞了",
+      body: () => "下班尖峰前十分鐘，封口機發出焦味，膜一直封不平。",
+      options: [
+        { label: "自己拆開試著修", note: "看你的營運能力", apply: (c) => { if (c.skills.ops + intBetween(c, 0, 30) >= 40) { c.trust += 4; log(c, "你發現只是加熱片鬆了，鎖緊就好。德哥很驚訝。"); } else { c.trust -= 2; c.savings -= 500; log(c, "越修越糟，還燙傷手，自己去藥局買了燙傷藥。"); } } },
+        { label: "改用杯蓋，打電話叫廠商", note: "尖峰出杯變慢；客人可能抱怨", apply: (c) => { if (chance(c, 0.5)) c.fame -= 2; c.trust -= 1; } },
+      ],
+    },
+    till_short: {
+      cat: "urgent", weight: 0.8, fallback: 0, cd: 16, max: 2, cond: (c) => c.stage === "clerk",
+      title: (c, d) => `收銀短少 NT$${d.amt || 800}`,
+      body: () => "關帳時錢對不起來，今天只有你和工讀生兩個人碰過收銀機。",
+      make: (c) => ({ amt: intBetween(c, 3, 20) * 100 }),
+      options: [
+        { label: "自己先補上", note: "老闆信任 +1", apply: (c, d) => { c.savings -= d.amt || 800; c.trust += 1; } },
+        { label: "請德哥調監視器", note: "可能還你清白，也可能更尷尬", apply: (c) => { if (chance(c, 0.55)) { c.trust += 3; log(c, "監視器拍到是找錢時多找了，德哥說不怪你。"); } else { c.trust -= 4; log(c, "監視器剛好死角，德哥沒說什麼，但你感覺得到他在懷疑。"); } } },
+      ],
+    },
+    influencer_visit: {
+      cat: "people", weight: 0.8, fallback: 1, cd: 14, max: 2, cond: (c) => c.stage === "clerk",
+      title: () => "美食網紅走進店裡",
+      body: () => "她有二十萬追蹤，點了三杯飲料，手機一直對著吧台拍。",
+      options: [
+        { label: "親自幫她做，順便介紹", note: "名聲可能大漲，也可能被嫌", apply: (c) => { if (c.skills.brew + c.skills.service + intBetween(c, 0, 40) >= 80) { const v = intBetween(c, 4, 9); c.fame += v; c.trust += 3; log(c, `影片爆了，名聲 +${v}，週末排隊排到騎樓。`); } else { c.fame -= 3; log(c, "影片說「普普通通，不會再來」。"); } } },
+        { label: "照平常做", note: "", apply: (c) => { if (chance(c, 0.3)) c.fame += 2; } },
+      ],
+    },
+    rush_crisis: {
+      cat: "urgent", weight: 1, fallback: 1, cd: 8, max: 4, cond: (c) => c.stage === "clerk",
+      title: () => "外送單一次湧進六十筆",
+      body: () => "平台在做免運活動，店裡只有你和一個工讀生。",
+      options: [
+        { label: "咬牙撐住", note: "體力 −10；看你的服務能力", apply: (c) => { c.energy -= 10; if (c.skills.service + intBetween(c, 0, 30) >= 45) { c.trust += 4; gain(c, "service", 2); log(c, "六十單全部準時出完，德哥請大家吃鹹酥雞。"); } else { c.fame -= intBetween(c, 2, 4); c.trust -= 2; log(c, "出單大亂，平台上多了七則負評。"); } } },
+        { label: "暫停接單半小時", note: "老闆信任 −2", apply: (c) => { c.trust -= 2; } },
+      ],
+    },
+    allergy_claim: {
+      cat: "urgent", weight: 0.6, fallback: 1, cd: 20, max: 1, cond: (c) => c.stage === "clerk",
+      title: () => "客人說喝了過敏",
+      body: () => "客人說明明交代不要加堅果，喝完全身起疹子，要求賠醫藥費。",
+      options: [
+        { label: "誠懇道歉，賠醫藥費", note: "NT$1,000～3,000；名聲 +1", apply: (c) => { c.savings -= intBetween(c, 1, 3) * 1000; c.fame += 1; c.trust += 1; } },
+        { label: "堅持店裡沒做錯", note: "對的話沒事；錯的話上新聞", apply: (c) => { if (chance(c, 0.55)) log(c, "查了單子，是客人自己點錯。對方道了歉。"); else { c.fame -= 6; c.trust -= 4; log(c, "客人把事情貼上社團，店被罵了一整週。"); } } },
+      ],
+    },
+    lazy_coworker: {
+      cat: "people", weight: 0.9, fallback: 1, cd: 12, max: 2, cond: (c) => c.stage === "clerk",
+      title: () => "同事一直躲在後面滑手機",
+      body: () => "阿凱每次尖峰都說去拿冰塊，一去就是二十分鐘。",
+      options: [
+        { label: "跟德哥說", note: "老闆信任 +2；阿凱可能記仇", apply: (c) => { c.trust += 2; if (chance(c, 0.4)) { c.energy -= 6; log(c, "阿凱之後故意把最累的收店工作丟給你。"); } } },
+        { label: "自己多做一點", note: "體力 −8；帶人 +1", apply: (c) => { c.energy -= 8; gain(c, "lead", 1); } },
+      ],
+    },
+    mystery_shopper: {
+      cat: "urgent", weight: 0.7, fallback: 0, cd: 16, max: 2, cond: (c) => c.stage === "clerk",
+      title: () => "神祕客評分結果出來了",
+      body: () => "德哥加入的連鎖協會派了神祕客，上週來店裡點了兩杯。",
+      options: [{ label: "看結果", note: "看你的服務和調飲", apply: (c) => { const sc = c.skills.service + c.skills.brew + intBetween(c, -15, 25); if (sc >= 85) { c.trust += 6; c.fame += 2; log(c, "神祕客給了九十二分，德哥把評分表貼在牆上。"); } else if (sc >= 60) { c.trust += 1; log(c, "神祕客給了七十五分，「待客親切，出杯偏慢」。"); } else { c.trust -= 5; log(c, "神祕客給了五十八分，德哥一整天沒跟你說話。"); } } }],
+    },
+    supplier_late: {
+      cat: "urgent", weight: 0.9, fallback: 1, cd: 12, max: 3, cond: (c) => c.stage === "clerk",
+      title: () => "鮮奶沒送到",
+      body: () => "廠商的車在路上拋錨，鮮奶系列中午就會賣完。",
+      options: [
+        { label: "騎車去量販店補貨", note: "體力 −6；老闆信任 +3", apply: (c) => { c.energy -= 6; c.trust += 3; } },
+        { label: "賣完就掛「售完」", note: "名聲 −1～3", apply: (c) => { c.fame -= intBetween(c, 1, 3); } },
+      ],
+    },
+    ice_machine: {
+      cat: "urgent", weight: 0.8, fallback: 1, cd: 16, max: 2, cond: (c) => c.stage === "clerk",
+      title: () => "製冰機罷工",
+      body: () => "三十三度的下午，製冰機只吐出水。",
+      options: [
+        { label: "去超商買冰塊", note: "自己先墊 NT$400～900；老闆信任 +2", apply: (c) => { c.savings -= intBetween(c, 4, 9) * 100; c.trust += 2; } },
+        { label: "只賣少冰、去冰", note: "名聲 −1～3", apply: (c) => { c.fame -= intBetween(c, 1, 3); } },
+      ],
+    },
+    promo_idea: {
+      cat: "people", weight: 0.8, fallback: 1, cd: 14, max: 2, cond: (c) => c.stage === "clerk" && c.skills.ops >= 20,
+      title: () => "你想到一個促銷點子",
+      body: () => "雨天第二杯半價，下雨的時候店裡常常沒人。",
+      options: [
+        { label: "跟德哥提案", note: "成功信任大增，失敗要負責", apply: (c) => { if (c.skills.ops + intBetween(c, 0, 40) >= 50) { c.trust += 6; c.fame += 3; log(c, "雨天半價大成功，德哥說要寫進加盟手冊。"); } else { c.trust -= 3; log(c, "那週剛好都沒下雨，印好的海報只能收起來。"); } } },
+        { label: "先不要好了", note: "", apply: () => {} },
+      ],
+    },
+    parttimer_noshow: {
+      cat: "urgent", weight: 1, fallback: 1, cd: 10, max: 3, cond: (c) => c.stage === "clerk",
+      title: () => "工讀生沒來上班",
+      body: () => "晚班的工讀生傳訊息說「不做了」，然後封鎖了德哥。",
+      options: [
+        { label: "連上兩個班", note: "多 8 小時（照時薪）；體力 −12；老闆信任 +4", apply: (c) => { c.flags.extraHours = (c.flags.extraHours || 0) + 8; c.energy -= 12; c.trust += 4; } },
+        { label: "真的撐不下去", note: "老闆信任 −3", apply: (c) => { c.trust -= 3; } },
+      ],
+    },
+    health_check: {
+      cat: "urgent", weight: 0.5, fallback: 0, cd: 40, max: 1, cond: (c) => c.stage === "clerk",
+      title: () => "要補員工健康檢查",
+      body: () => "衛生局規定餐飲從業人員每年要體檢，店裡不幫出。",
+      options: [{ label: "去醫院做", note: "NT$500～1,200", apply: (c) => { c.savings -= intBetween(c, 5, 12) * 100; } }],
+    },
+    boss_mood: {
+      cat: "people", weight: 0.9, fallback: 1, cd: 10, max: 3, cond: (c) => c.week > 6,
+      title: () => "德哥今天心情很差",
+      body: () => "聽說房東又來談漲租，德哥一早就在後面摔東西。",
+      options: [
+        { label: "泡一杯他最愛的凍頂給他", note: "可能被罵，也可能被記住", apply: (c) => { if (chance(c, 0.6)) { c.trust += intBetween(c, 2, 4); log(c, "德哥喝了一口，嘆氣說謝謝。"); } else { c.trust -= 1; log(c, "德哥說：「誰叫你泡的？去做事。」"); } } },
+        { label: "離他遠一點", note: "", apply: (c) => { if (chance(c, 0.3)) c.trust -= 1; } },
+      ],
+    },
+    overslept: {
+      cat: "urgent", weight: 0.8, fallback: 0, cd: 12, max: 3, cond: (c) => c.energy < 45,
+      title: () => "睡過頭了",
+      body: () => "鬧鐘沒響（或是你按掉了），醒來已經遲到一個小時。",
+      options: [
+        { label: "道歉，下班補時數", note: "多上 4 小時（照時薪）；老闆信任 −1", apply: (c) => { c.flags.extraHours = (c.flags.extraHours || 0) + 4; c.trust -= 1; c.energy -= 4; } },
+        { label: "說機車拋錨", note: "被拆穿就慘了", apply: (c) => { if (chance(c, 0.6)) log(c, "德哥沒多問。"); else { c.trust -= 6; log(c, "同事看到你從家裡慢慢走出來。德哥很生氣。"); } } },
+      ],
+    },
+    toothache: {
+      cat: "urgent", weight: 0.6, fallback: 1, cd: 30, max: 1,
+      title: () => "智齒痛到睡不著",
+      body: () => "牙醫說要拔，但健保不給付的部分要自費。",
+      options: [
+        { label: "去拔", note: "NT$1,500～5,000；休息半天", apply: (c) => { c.savings -= intBetween(c, 15, 50) * 100; c.flags.skipHours = (c.flags.skipHours || 0) + 4; } },
+        { label: "先吃止痛藥撐著", note: "體力 −8；可能更嚴重", apply: (c) => { c.energy -= 8; if (chance(c, 0.35)) { c.savings -= 6000; c.flags.skipHours = (c.flags.skipHours || 0) + 8; log(c, "拖到發炎，最後花了 NT$6,000 還請了一天假。"); } } },
+      ],
+    },
+    family_money: {
+      cat: "people", weight: 0.6, fallback: 1, cd: 26, max: 2, cond: (c) => c.week > 5,
+      title: () => "家裡需要錢",
+      body: () => "爸爸工廠減班，媽媽小心地問你這個月能不能幫忙一點。",
+      options: [
+        { label: "寄錢回家", note: "NT$3,000～8,000；家裡會記得", apply: (c) => { c.savings -= intBetween(c, 3, 8) * 1000; c.flags.familyOk = 1; c.energy += 4; } },
+        { label: "說這個月真的不行", note: "心裡過意不去，體力 −5", apply: (c) => { c.energy -= 5; } },
+      ],
+    },
+    friend_borrow: {
+      cat: "people", weight: 0.6, fallback: 1, cd: 30, max: 1,
+      title: () => "高職同學想跟你借 NT$5,000",
+      body: () => "他說下個月薪水進來就還，語氣聽起來很急。",
+      options: [
+        { label: "借他", note: "可能還，也可能不還", apply: (c) => { c.savings -= 5000; c.flags.loanBack = c.week + intBetween(c, 4, 8); } },
+        { label: "婉拒", note: "他可能不太高興", apply: (c) => { if (chance(c, 0.5)) log(c, "同學說沒關係，之後就很少聯絡了。"); } },
+      ],
+    },
+    receipt_lottery: {
+      cat: "people", weight: 0.5, fallback: 0, cd: 8, max: 3,
+      title: () => "統一發票對獎",
+      body: () => "你把整個月的發票攤在床上一張一張對。",
+      options: [{ label: "對！", note: "看運氣", apply: (c) => { const v = pick(c, [0, 0, 200, 200, 1000, 4000]); c.savings += v; log(c, v ? `中了 NT$${v}！` : "一張都沒中。"); } }],
+    },
+    caught_cold: {
+      cat: "urgent", weight: 0.8, fallback: 1, cd: 12, max: 3,
+      title: () => "感冒了",
+      body: () => "喉嚨痛、鼻塞，量了一下 37.8 度。",
+      options: [
+        { label: "請假休息兩天", note: "少 8 小時；老闆信任 −1", apply: (c) => { c.flags.skipHours = (c.flags.skipHours || 0) + 8; c.trust -= 1; c.energy += 6; } },
+        { label: "戴口罩硬撐", note: "體力 −10～18；可能變嚴重", apply: (c) => { c.energy -= intBetween(c, 10, 18); if (chance(c, 0.3)) c.inbox.push(ev(c, "sick")); } },
+      ],
+    },
+    scooter_stolen: {
+      cat: "urgent", weight: 0.35, fallback: 0, cd: 40, max: 1, cond: (c) => c.week > 8,
+      title: () => "機車被偷了",
+      body: () => "早上下樓，停車格空空的。警察說找回來的機會不大。",
+      options: [
+        { label: "買一台二手機車", note: "NT$12,000～18,000", apply: (c) => { c.savings -= intBetween(c, 12, 18) * 1000; } },
+        { label: "先坐公車上班", note: "通勤累，好幾週體力都會比較差", apply: (c) => { c.energy -= 10; c.flags.farHome = 1; c.trust -= 2; } },
+      ],
+    },
+    ac_broke: {
+      cat: "urgent", weight: 0.6, fallback: 1, cd: 30, max: 1, cond: (c) => c.week > 4,
+      title: () => "租屋的冷氣壞了",
+      body: () => "房東說「舊冷氣本來就這樣」，要你自己找人修。",
+      options: [
+        { label: "自己出錢修", note: "NT$1,000～3,000", apply: (c) => { c.savings -= intBetween(c, 10, 30) * 100; } },
+        { label: "開電風扇撐過去", note: "睡不好，體力 −6；之後幾週也比較累", apply: (c) => { c.energy -= 6; c.flags.hotRoom = c.week + 6; } },
+      ],
+    },
+    course_sale: {
+      cat: "people", weight: 0.6, fallback: 1, cd: 20, max: 2,
+      title: () => "線上課程限時優惠",
+      body: () => "「餐飲創業實戰班」原價一萬二，今天特價 NT$2,000。",
+      options: [
+        { label: "買了", note: "營運 +3～6；有可能是灌水課程", apply: (c) => { c.savings -= 2000; if (chance(c, 0.7)) gain(c, "ops", intBetween(c, 3, 6)); else log(c, "課程內容都是網路上抄來的，有點後悔。"); } },
+        { label: "不買", note: "", apply: () => {} },
+      ],
+    },
+    cousin_wedding: {
+      cat: "people", weight: 0.5, fallback: 1, cd: 30, max: 1, cond: (c) => c.week > 6,
+      title: () => "表姊要結婚了",
+      body: () => "婚禮在週六中午，家族的人都會到，媽媽希望你一定要來。",
+      options: [
+        { label: "請假去，包紅包", note: "NT$1,600～3,600；少 8 小時；家裡很開心", apply: (c) => { c.savings -= pick(c, [1600, 2200, 2600, 3600]); c.flags.skipHours = (c.flags.skipHours || 0) + 8; c.flags.familyOk = 1; c.energy += 5; } },
+        { label: "說要上班，紅包託媽媽帶", note: "NT$1,600；媽媽有點失望", apply: (c) => { c.savings -= 1600; c.energy -= 3; } },
+      ],
+    },
+    side_hustle: {
+      cat: "people", weight: 0.5, fallback: 1, cd: 30, max: 1,
+      title: () => "朋友找你一起做代購",
+      body: () => "他說日本零食轉賣很好賺，要你出 NT$5,000 一起進貨。",
+      options: [
+        { label: "一起做", note: "可能賺，也可能賠", apply: (c) => { const v = intBetween(c, -5, 7) * 1000; c.savings += v; log(c, v >= 0 ? `代購賺了 NT$${v}。` : `代購的零食過期賣不掉，賠了 NT$${-v}。`); } },
+        { label: "不要", note: "", apply: () => {} },
+      ],
+    },
+    stock_tip: {
+      cat: "people", weight: 0.5, fallback: 1, cd: 26, max: 2, cond: (c) => c.savings > 15000,
+      title: () => "同事報明牌",
+      body: () => "阿凱說他表哥在證券公司，這支股票下週一定漲。",
+      options: [
+        { label: "投 NT$10,000", note: "看運氣", apply: (c) => { const v = intBetween(c, -8, 9) * 1000; c.savings += v; log(c, v >= 0 ? `那支股票真的漲了，賺 NT$${v}。` : `買在最高點，賠了 NT$${-v}。`); } },
+        { label: "不碰股票", note: "", apply: () => {} },
+      ],
+    },
+    typhoon_day: {
+      cat: "urgent", weight: 0.7, fallback: 0, cd: 20, max: 2,
+      title: () => "颱風假",
+      body: () => "市政府宣布停班停課。德哥說店要不要開讓大家自己決定。",
+      options: [
+        { label: "待在家", note: "少 8 小時薪水，體力 +8", apply: (c) => { c.flags.skipHours = (c.flags.skipHours || 0) + 8; c.energy += 8; } },
+        { label: "去店裡顧", note: "多 6 小時、加給；路上危險", apply: (c) => { c.flags.extraHours = (c.flags.extraHours || 0) + 6; c.savings += 1200; c.trust += 3; if (chance(c, 0.15)) { c.energy -= 15; c.savings -= 2000; log(c, "颱風天騎車被招牌砸到，人沒事，車修了 NT$2,000。"); } } },
+      ],
+    },
+    blood_drive: {
+      cat: "people", weight: 0.4, fallback: 1, cd: 20, max: 2,
+      title: () => "捐血車停在店門口",
+      body: () => "護理師說今天 O 型血很缺。",
+      options: [
+        { label: "捐一袋", note: "體力 −5；名聲 +1", apply: (c) => { c.energy -= 5; c.fame += 1; } },
+        { label: "下次", note: "", apply: () => {} },
+      ],
+    },
+    insomnia: {
+      cat: "people", weight: 0.6, fallback: 0, cd: 12, max: 3, cond: (c) => c.week > 4,
+      title: () => "連續好幾天睡不著",
+      body: () => "一閉上眼睛就在想存款和下個月的房租。",
+      options: [
+        { label: "下班去跑步", note: "體力 −4 換之後比較好睡", apply: (c) => { c.energy -= 4; c.fit = clamp((c.fit || 0) + 1, 0, 10); } },
+        { label: "滑手機到天亮", note: "體力 −6～12", apply: (c) => { c.energy -= intBetween(c, 6, 12); } },
+      ],
+    },
+    online_scam: {
+      cat: "urgent", weight: 0.5, fallback: 0, cd: 30, max: 1,
+      title: () => "網購的球鞋一直沒寄來",
+      body: () => "賣家的帳號不見了，你付了 NT$2,400。",
+      options: [
+        { label: "報警", note: "錢多半拿不回來", apply: (c) => { c.savings -= 2400; if (chance(c, 0.2)) { c.savings += 2400; log(c, "警察真的抓到人，錢退回來了。"); } } },
+        { label: "算了，當學費", note: "", apply: (c) => { c.savings -= 2400; } },
+      ],
+    },
+    employee_month: {
+      cat: "people", weight: 0.6, fallback: 0, cd: 12, max: 3, cond: (c) => c.trust >= 55,
+      title: () => "你是這個月的最佳員工",
+      body: () => "德哥在晨會上宣布，還包了紅包。",
+      options: [{ label: "收下", note: "紅包多少看這個月店裡生意", apply: (c) => { const v = intBetween(c, 5, 30) * 100; c.savings += v; c.trust += 2; log(c, `紅包裡有 NT$${v}。`); } }],
+    },
+    rival_bogo: {
+      cat: "people", weight: 0.8, fallback: 1, cd: 16, max: 2, cond: (c) => c.stage === "clerk",
+      title: () => "對面的店開始買一送一",
+      body: () => "這週店裡的客人少了三成，德哥問大家有沒有辦法。",
+      options: [
+        { label: "建議推會員集點", note: "看你的營運", apply: (c) => { if (c.skills.ops + intBetween(c, 0, 30) >= 40) { c.trust += 4; log(c, "集點卡推出兩週，熟客都回來了。"); } else { c.trust -= 2; log(c, "集點卡沒人在用，印了五百張。"); } } },
+        { label: "多做一點服務，留住熟客", note: "看你的服務", apply: (c) => { if (c.skills.service + intBetween(c, 0, 30) >= 45) { c.fame += 3; gain(c, "service", 1); } else c.fame -= 2; } },
+      ],
+    },
+    dirty_video: {
+      cat: "urgent", weight: 0.6, fallback: 1, cd: 26, max: 1, cond: (c) => c.stage === "clerk",
+      title: () => "有人拍到店裡的冰桶沒蓋",
+      body: () => "影片在地方社團被分享了兩百次，留言都在問「還敢喝嗎」。",
+      options: [
+        { label: "帶頭大掃除、拍改善影片", note: "體力 −8；老闆信任 +3；名聲看反應", apply: (c) => { c.energy -= 8; c.trust += 3; c.fame += chance(c, 0.5) ? 2 : -2; } },
+        { label: "等風頭過去", note: "名聲 −4～8；老闆信任 −2", apply: (c) => { c.fame -= intBetween(c, 4, 8); c.trust -= 2; } },
+      ],
+    },
+    boss_son: {
+      cat: "people", weight: 0.6, fallback: 1, max: 1, cond: (c) => c.stage === "clerk" && c.week > 14,
+      title: () => "德哥的兒子來店裡實習",
+      body: () => "大學剛畢業，什麼都覺得「效率很差」，第一天就改了你排好的備料表。",
+      options: [
+        { label: "耐心教他", note: "帶人 +2；他可能聽，也可能去告狀", apply: (c) => { gain(c, "lead", 2); if (chance(c, 0.6)) { c.trust += 3; log(c, "德哥的兒子後來跟德哥說你很會教。"); } else { c.trust -= 3; log(c, "他跟德哥說你「很難溝通」。"); } } },
+        { label: "照規矩來，不讓他亂改", note: "老闆信任 ±", apply: (c) => { c.trust += chance(c, 0.5) ? 2 : -3; } },
+      ],
+    },
+    late_delivery_fine: {
+      cat: "urgent", weight: 0.7, fallback: 0, cd: 12, max: 3, cond: (c) => c.stage === "runner" && c.routes < 50,
+      title: () => "迷路送晚了二十分鐘",
+      body: () => "新開的社區門牌很亂，你繞了三圈才找到。",
+      options: [
+        { label: "跟客人道歉", note: "客人可能取消訂單", apply: (c) => { if (chance(c, 0.4)) { c.savings -= 300; c.trust -= 2; log(c, "客人拒收，飲料錢從你薪水扣。"); } else c.trust -= 1; } },
+      ],
+    },
+    regular_moves: {
+      cat: "people", weight: 0.5, fallback: 0, max: 1, cond: (c) => c.fame >= 8 && c.week > 10,
+      title: () => "最常點的熟客要搬家了",
+      body: () => "每週三固定點十杯的設計公司要搬到台北。",
+      options: [{ label: "最後一次送去", note: "", apply: (c) => { c.fame -= 2; log(c, "設計公司的人說會想念你們的珍奶，還寫了一張卡片。"); } }],
+    },
+    heat_stroke: {
+      cat: "urgent", weight: 0.6, fallback: 0, cd: 20, max: 2, cond: (c) => c.energy < 50,
+      title: () => "中午差點中暑",
+      body: () => "36 度的大太陽下排隊等紅燈，眼前一黑。",
+      options: [
+        { label: "去超商吹冷氣休息", note: "這單遲到；體力 +4", apply: (c) => { c.trust -= 1; c.energy += 4; } },
+        { label: "灌一瓶運動飲料繼續", note: "體力 −8；有機會真的倒下", apply: (c) => { c.energy -= 8; if (chance(c, 0.25)) c.inbox.push(ev(c, "sick")); } },
+      ],
+    },
+    customer_praise: {
+      cat: "people", weight: 0.6, fallback: 0, cd: 10, max: 3, cond: (c) => c.skills.service >= 20,
+      title: () => "客人在 Google 評論點名誇你",
+      body: (c) => `「${c.name}很細心，記得我不要珍珠要椰果。」`,
+      options: [{ label: "截圖傳給媽媽", note: "名聲 +1～3", apply: (c) => { c.fame += intBetween(c, 1, 3); c.energy += 3; } }],
+    },
+    tax_refund: {
+      cat: "people", weight: 0.4, fallback: 0, max: 1, cond: (c) => c.week > 20,
+      title: () => "報稅季",
+      body: () => "第一次自己報所得稅，手機 App 跳出試算結果。",
+      options: [{ label: "送出", note: "看結果", apply: (c) => { const v = intBetween(c, -3, 6) * 500; c.savings += v; log(c, v >= 0 ? `可以退稅 NT$${v}。` : `還要補繳 NT$${-v}。`); } }],
+    },
+    gym_injury: {
+      cat: "urgent", weight: 0.4, fallback: 0, cd: 30, max: 1, cond: (c) => (c.fit || 0) >= 3,
+      title: () => "打球扭到腳",
+      body: () => "下班去打籃球，落地時踩到別人的腳。",
+      options: [{ label: "去看骨科", note: "NT$800～2,000；這週少 6 小時", apply: (c) => { c.savings -= intBetween(c, 8, 20) * 100; c.flags.skipHours = (c.flags.skipHours || 0) + 6; c.energy -= 6; } }],
+    },
+    power_bill: {
+      cat: "urgent", weight: 0.5, fallback: 0, cd: 26, max: 2, cond: (c) => c.week > 8,
+      title: () => "夏天的電費單來了",
+      body: () => "雅房的電錶是房東自己裝的，一度算六塊。",
+      options: [
+        { label: "照付", note: "NT$1,200～2,800", apply: (c) => { c.savings -= intBetween(c, 12, 28) * 100; } },
+        { label: "跟房東理論", note: "可能少付，也可能被趕", apply: (c) => { if (chance(c, 0.5)) { c.savings -= 1000; log(c, "房東讓步，改成一度五塊。"); } else { c.savings -= 2800; c.energy -= 4; log(c, "房東說不爽可以搬走，最後還是全付。"); } } },
+      ],
+    },
     promote_clerk: {
       cat: "people", weight: 0, fallback: -1,
       title: () => "德哥：「要不要轉正職店員？」",
       body: (c) => `德哥說這幾週看你做事很實在，想讓你轉成正職店員，時薪調到 ${STAGES.clerk.wage + (c.wageBonus || 0)}。不用再每天在外面跑了。`,
       options: [
-        { label: "好！", note: "升任店員", apply: (c) => { c.stage = "clerk"; c.stageWeeks = 0; c.trust += 5; log(c, "你換上店員的圍裙，正式站進吧台。"); } },
+        { label: "好！", note: "要先通過德哥的吧台考試（看調飲和信任）；沒過要再練兩週", apply: (c) => {
+          const p = clamp(0.35 + (c.skills.brew - 25) / 30 + (c.trust - 45) / 80, 0.25, 0.9);
+          if (chance(c, p)) { c.stage = "clerk"; c.stageWeeks = 0; c.trust += 5; log(c, "吧台考試過了。你換上店員的圍裙，正式站進吧台。"); }
+          else { c.flags.clerkLater = c.week + 2; c.trust -= 2; log(c, pick(c, ["考試那天手一直抖，三杯裡兩杯糖度做錯。德哥說：「再練兩週。」", "尖峰時段讓你試站吧台，單子一多就亂了，客人等了二十分鐘。德哥把你換下來。"])); }
+        } },
         { label: "再跑一陣子外送", note: "小費比較多；之後再問", apply: (c) => { c.flags.clerkLater = c.week + 6; } },
       ],
     },
@@ -320,7 +776,12 @@
       title: () => "德哥要開第二家店",
       body: (c) => `德哥在${c.shop.district2}找到第二間店面，想讓你當店長：月薪 42,000，店有賺錢再分一成。「店交給你，我只看帳。」`,
       options: [
-        { label: "接下店長", note: "進入店長階段：排班、叫貨、帶人都是你的事", apply: (c) => { c.promoted = 1; } },
+        { label: "接下店長", note: "先代理店長一週（看營運、帶人、信任）；沒過德哥會再觀察三週", apply: (c) => {
+          const p = clamp(0.3 + (c.skills.ops - 35) / 40 + (c.skills.lead - 20) / 40 + (c.trust - 70) / 80, 0.2, 0.9);
+          if (chance(c, p)) { c.promoted = 1; return; }
+          c.flags.managerLater = c.week + 3; c.trust -= 3;
+          log(c, pick(c, ["代理店長那週，叫貨算錯，週末珍珠斷貨兩天。德哥說：「再看看。」", "代理店長時排班沒排好，兩個工讀生同一天請假，你自己顧店到半夜。德哥說還不急。", "代理店長那週營業額掉了一成，德哥看完帳沒說話，只說再等等。"]));
+        } },
         { label: "我還沒準備好", note: "兩個月後德哥會再問", apply: (c) => { c.flags.managerLater = c.week + 8; } },
       ],
     },
@@ -328,7 +789,8 @@
   const RANDOM_IDS = Object.keys(EVENTS).filter((k) => EVENTS[k].weight > 0);
 
   function ev(c, id, data) {
-    return { uid: "c" + c.nextId++, id, data: data || {}, week: c.week };
+    const make = EVENTS[id] && EVENTS[id].make;
+    return { uid: "c" + c.nextId++, id, data: data || (make ? make(c) : {}), week: c.week };
   }
   function log(c, text) {
     c.log.unshift({ week: c.week, text });
@@ -446,7 +908,7 @@
       { label: "老闆信任 45", ok: c.trust >= 45, v: c.trust, need: 45 },
     ];
     return [
-      { label: "當店員滿 24 週", ok: c.stageWeeks >= 24 },
+      { label: "當店員滿 12 週", ok: c.stageWeeks >= 12 },
       { label: "調飲 50", ok: c.skills.brew >= 50, v: c.skills.brew, need: 50 },
       { label: "服務 40", ok: c.skills.service >= 40, v: c.skills.service, need: 40 },
       { label: "營運 35", ok: c.skills.ops >= 35, v: c.skills.ops, need: 35 },
@@ -471,10 +933,22 @@
     }
     const savingsStart = c.savings;
     let paidHours = c.flags.extraHours || 0;
+    const tired = c.energy < 35;
     for (const k of c.plan) {
       const a = ACTIONS[k];
       if (a.pay) paidHours += a.hours;
       out.push({ text: `${a.name}：${a.run(c, o)}` });
+      // 太累上工容易出包
+      if (a.pay && tired && chance(c, 0.25)) {
+        const loss = intBetween(c, 2, 5);
+        c.trust -= loss;
+        out.push({ text: `　累到恍神：${pick(c, MISHAPS[c.stage])}（老闆信任 −${loss}）` });
+      }
+    }
+    if (c.flags.loanBack && c.flags.loanBack <= c.week) {
+      if (chance(c, 0.55)) { c.savings += 5000; out.push({ text: "借錢的朋友把 NT$5,000 還你了，還請你吃了一頓飯。" }); }
+      else out.push({ text: "借你錢的朋友已讀不回。那 NT$5,000 大概要不回來了。" });
+      c.flags.loanBack = 0;
     }
     const used = hoursUsed(c) + (c.flags.extraHours || 0);
     const wage = STAGES[c.stage].wage + (c.wageBonus || 0);
@@ -482,7 +956,7 @@
     const living = LIVING + (c.livingPlus || 0);
     c.savings += pay - living;
     // 體力：每週自然恢復，超時多扣
-    c.energy += 26 + (c.fit || 0) * 0.6 - (c.flags.farHome ? 3 : 0) - Math.max(0, used - BASE_HOURS) * 1.2 - paidHours * 0.35;
+    c.energy += 26 + (c.fit || 0) * 0.6 - (c.flags.farHome ? 3 : 0) - ((c.flags.hotRoom || 0) > c.week ? 3 : 0) -Math.max(0, used - BASE_HOURS) * 1.2 - paidHours * 0.35;
     if (paidHours < 16) { c.trust -= 3; out.push({ text: "這週班排得很少，德哥問你是不是不想做了。" }); }
     c.flags.extraHours = 0;
     c.flags.skipHours = 0;
@@ -498,6 +972,21 @@
     else c.debtWeeks = 0;
     if (c.debtWeeks >= 4) c.over = { grade: "D", title: "回老家", text: `連續一個月入不敷出，${c.name}把機車賣了，搬回老家。` };
     if (c.week >= 156 && !c.over) c.over = { grade: "C", title: "資深店員", text: `三年過去，${c.name}還在「${c.shop.name}」站吧台，熟客都叫得出你的名字。` };
+    // 老闆信任太低：先被警告，再不改善，店員降回外送、小弟被開除
+    if (!c.over) {
+      if (c.trust < 20) c.lowTrust = (c.lowTrust || 0) + 1;
+      else c.lowTrust = 0;
+      if (c.lowTrust === 2) c.inbox.push(ev(c, "boss_warning"));
+      if (c.lowTrust >= 4) {
+        if (c.stage === "clerk") {
+          c.stage = "runner"; c.stageWeeks = 0; c.trust = 28; c.lowTrust = 0; c.flags.clerkLater = c.week + 4;
+          log(c, "德哥把你調回去跑外送：「先把責任感找回來。」");
+          report.lines.push({ text: "老闆信任一直沒回來，你被調回外送小弟。" });
+        } else {
+          c.over = { grade: "D", title: "被開除", text: `德哥說店裡不需要不穩定的人。${c.name}收拾了安全帽和雨衣，離開「${c.shop.name}」。` };
+        }
+      }
+    }
     if (!c.over) {
       if (c.energy <= 5) c.inbox.push(ev(c, "sick"));
       const g = goals(c);
@@ -553,9 +1042,22 @@
 
   // ---------- 自動玩家（測試用） ----------
   function autoPlay(c) {
+    // 每個選項在複本上試一次，挑分數最高的（存款、信任、體力、能力都算）
+    const score = (x) => x.savings + x.trust * 150 + x.energy * 60 + x.fame * 80 + (x.skills.brew + x.skills.service + x.skills.ops + x.skills.lead) * 120 + (x.stage === "clerk" ? 4000 : 0) + (x.promoted ? 1e6 : 0);
     for (const inst of c.inbox.slice()) {
       const e = EVENTS[inst.id];
-      resolveEvent(c, inst.uid, inst.id === "friend_trip" || inst.id === "rival_recruit" ? 1 : 0);
+      let best = 0;
+      if (inst.id === "friend_trip" || inst.id === "rival_recruit") best = 1;
+      else if (e.options.length > 1) {
+        let top = -Infinity;
+        // 用不同的亂數試 6 次取平均，不能偷看這一次真正的結果
+        e.options.forEach((_, i) => {
+          let v = 0;
+          for (let k = 0; k < 6; k++) { const t = JSON.parse(JSON.stringify(c)); t.rng = (c.rng ^ (0x9e3779b9 * (k + 1))) >>> 0; resolveEvent(t, inst.uid, i); v += score(t); }
+          if (v > top) { top = v; best = i; }
+        });
+      }
+      resolveEvent(c, inst.uid, best);
       if (e && c.promoted) return;
     }
     const want = c.stage === "runner"

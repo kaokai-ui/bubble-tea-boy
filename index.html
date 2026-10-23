@@ -134,8 +134,8 @@ th:first-child, td:first-child { text-align: left }
 </style>
 
 <div id="app"></div>
-<script src="sim.js?v=6" charset="utf-8"></script>
-<script src="career.js?v=6" charset="utf-8"></script>
+<script src="sim.js?v=7" charset="utf-8"></script>
+<script src="career.js?v=7" charset="utf-8"></script>
 <script>
 "use strict";
 const T = globalThis.TeaSim;
@@ -429,11 +429,11 @@ function meterHtml(v, good) {
 function managerGoal() {
   const c = S.career;
   const weeks = S.week - c.managerWeek;
-  const need = T.BUYOUT_PRICE * 0.2;
+  const need = T.BUYOUT_DOWN;
   const row = (l, ok) => `<span class="${ok ? "good" : "muted"}">${ok ? "✓" : "○"} ${l}</span>`;
   return `<section class="card"><span class="cup">店長 · 第 ${weeks + 1} 週</span>
-    <span class="small">店賺錢你分一成二，虧錢老闆信任會掉；信任掉到 10 以下會被換掉。德哥說過，等你準備好，品牌可以交給你。</span>
-    <div class="row small">${row("當店長 40 週", weeks >= 40)}${row("老闆信任 65", c.trust >= 65)}${row(`存款 ${money(need)}（自備款）`, c.savings >= need)}</div></section>`;
+    <span class="small">店賺錢你分一成二，虧錢老闆信任會掉；信任掉到 10 以下會被換掉。條件到了德哥會問你要不要買下品牌：存款越多、貸款越少，董事長越好當；你也可以先繼續當店長。</span>
+    <div class="row small">${row(`當店長 ${T.BUYOUT_WEEKS} 週`, weeks >= T.BUYOUT_WEEKS)}${row("老闆信任 65", c.trust >= 65)}${row(`存款 ${money(need)}（自備款）`, c.savings >= need)}</div></section>`;
 }
 function careerTitle(c) { return C.STAGES[c.stage].name; }
 
@@ -489,7 +489,8 @@ function careerMe(c) {
   const sk = [["brew", "調飲"], ["service", "服務"], ["ops", "營運"], ["lead", "帶人"]];
   const g = C.goals(c);
   return `<section class="group"><div class="group-head"><h2>${c.stage === "runner" ? "升店員的條件" : "升店長的條件"}</h2></div>
-    <div class="card">${g.map((x) => `<div class="${x.ok ? "good" : ""}">${x.ok ? "✓" : "○"} ${x.label}${x.v !== undefined && !x.ok ? `<span class="small muted num">（現在 ${Math.round(x.v)}）</span>` : ""}</div>`).join("")}</div></section>
+    <div class="card">${g.map((x) => `<div class="${x.ok ? "good" : ""}">${x.ok ? "✓" : "○"} ${x.label}${x.v !== undefined && !x.ok ? `<span class="small muted num">（現在 ${Math.round(x.v)}）</span>` : ""}</div>`).join("")}
+      <div class="small muted">條件都達成後，德哥會問你要不要升。答應了還要通過${c.stage === "runner" ? "吧台考試" : "代理店長一週"}，沒過得再等幾週；也可以先不升，留在這一階。老闆信任太低會被警告，${c.stage === "runner" ? "再不改善會被開除" : "再不改善會被調回外送"}。</div></div></section>
     <section class="group"><div class="group-head"><h2>能力</h2><span class="small muted">之後當店長、董事長都用得到</span></div>
     <div class="card">${sk.map(([k, l]) => `<div><div class="row"><b>${l}</b><span class="num small muted">${Math.round(c.skills[k])}</span></div><div class="bar"><span class="fill" style="width:${c.skills[k]}%"></span></div></div>`).join("")}
       <div class="small muted">名聲 ${Math.round(c.fame)} · 外送路線熟悉度 ${c.routes}</div></div></section>
