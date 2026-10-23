@@ -15,8 +15,9 @@ function careless(c, rnd) {
   for (let n = 0; n < 12; n++) C.planAction(c, keys[Math.floor(rnd() * keys.length)]);
 }
 
+const HITS = [["累到出包", /累到恍神/], ["過勞", /過勞了/], ["能力生疏", /生疏/], ["卡債利息", /利息/], ["試用期沒過", /試用期沒過/], ["阿凱先當店長", /阿凱試當店長/], ["班太少", /班排得很少/]];
 for (const mode of ["認真玩", "隨便玩"]) {
-  const r = { clerk: [], manager: [], fail: {}, demoted: 0, testFail: 0, events: new Set(), shown: 0, repeats: 0 };
+  const r = { clerk: [], manager: [], fail: {}, demoted: 0, testFail: 0, events: new Set(), shown: 0, repeats: 0, hits: {} };
   for (let i = 0; i < N; i++) {
     const c = C.newCareer("測試", 5000 + i * 104729);
     let s = (i * 2654435761) >>> 0;
@@ -27,7 +28,8 @@ for (const mode of ["認真玩", "隨便玩"]) {
       c.inbox.forEach((x) => { r.events.add(x.id); if (counted.has(x.uid) || /^promote_|^boss_warning$/.test(x.id)) return; counted.add(x.uid); r.shown++; if (seen.has(x.id)) r.repeats++; seen.add(x.id); });
       if (mode === "認真玩") C.autoPlay(c); else careless(c, rnd);
       if (c.promoted) break;
-      C.endWeek(c);
+      const rep = C.endWeek(c);
+      for (const l of (rep && rep.lines) || []) for (const [k, re] of HITS) if (re.test(l.text)) r.hits[k] = (r.hits[k] || 0) + 1;
       if (c.stage === "clerk" && !wasClerk) { wasClerk = true; r.clerk.push(c.week); }
       if (wasClerk && c.stage === "runner") { r.demoted++; wasClerk = false; }
     }
@@ -37,4 +39,5 @@ for (const mode of ["認真玩", "隨便玩"]) {
   }
   const avg = (a) => (a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length) : "-");
   console.log(`【${mode}】升店員 ${r.clerk.length}/${N}（平均第 ${avg(r.clerk)} 週）· 升店長 ${r.manager.length}/${N}（平均第 ${avg(r.manager)} 週）· 被降回外送 ${r.demoted} 次 · 升職考驗沒過 ${r.testFail} 次 · 失敗 ${JSON.stringify(r.fail)} · 出現過的事件 ${r.events.size} 種 · 每局遇到的事件裡重複的比例 ${Math.round((r.repeats / Math.max(1, r.shown)) * 100)}%`);
+  console.log(`　平均每局：${HITS.map(([k]) => `${k} ${((r.hits[k] || 0) / N).toFixed(2)}`).join("、")}`);
 }

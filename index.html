@@ -490,7 +490,7 @@ function careerMe(c) {
   const g = C.goals(c);
   return `<section class="group"><div class="group-head"><h2>${c.stage === "runner" ? "升店員的條件" : "升店長的條件"}</h2></div>
     <div class="card">${g.map((x) => `<div class="${x.ok ? "good" : ""}">${x.ok ? "✓" : "○"} ${x.label}${x.v !== undefined && !x.ok ? `<span class="small muted num">（現在 ${Math.round(x.v)}）</span>` : ""}</div>`).join("")}
-      <div class="small muted">條件都達成後，德哥會問你要不要升。答應了還要通過${c.stage === "runner" ? "吧台考試" : "代理店長一週"}，沒過得再等幾週；也可以先不升，留在這一階。老闆信任太低會被警告，${c.stage === "runner" ? "再不改善會被開除" : "再不改善會被調回外送"}。</div></div></section>
+      <div class="small muted">條件都達成後，德哥會問你要不要升。答應了還要通過${c.stage === "runner" ? "吧台考試" : "代理店長一週"}，沒過得再等幾週；也可以先不升，留在這一階。老闆信任太低會被警告，${c.stage === "runner" ? "再不改善會被開除" : "再不改善會被調回外送"}。${c.stage === "clerk" ? "剛當店員有 4 週試用期；店長的位子阿凱也想要。" : ""}連續三週超過 54 小時會過勞；能力四週沒練會生疏；存款變負數要付卡債利息。</div></div></section>
     <section class="group"><div class="group-head"><h2>能力</h2><span class="small muted">之後當店長、董事長都用得到</span></div>
     <div class="card">${sk.map(([k, l]) => `<div><div class="row"><b>${l}</b><span class="num small muted">${Math.round(c.skills[k])}</span></div><div class="bar"><span class="fill" style="width:${c.skills[k]}%"></span></div></div>`).join("")}
       <div class="small muted">名聲 ${Math.round(c.fame)} · 外送路線熟悉度 ${c.routes}</div></div></section>

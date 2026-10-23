@@ -81,6 +81,9 @@
   Object.assign(ACTIONS, Object.fromEntries(Object.entries(SPECIALS).map(([k, a]) => [k, { ...a, stage: "special" }])));
 
   function gain(c, key, v) {
+    c.lastTrain = c.lastTrain || {};
+    if (v > 0) c.lastTrain[key] = c.week;
+    if ((c.flags.burnout || 0) > c.week) v *= 0.5;
     c.skills[key] = clamp(c.skills[key] + v * (1 - c.skills[key] / 130), 0, 100);
   }
 
@@ -145,7 +148,8 @@
       options: [{ label: "謝謝阿姨", note: "名聲 +1～3", apply: (c) => { c.fame += intBetween(c, 1, 3); } }],
     },
     scooter: {
-      cat: "urgent", weight: 1.5, fallback: 0, cd: 14, max: 2, cond: (c) => c.stage === "runner" && (c.flags.scooterOk || 0) <= c.week,
+      // 越久沒保養越容易拋錨
+      cat: "urgent", weight: (c) => Math.min(4, 1 + Math.max(0, c.week - (c.flags.scooterOk || 0)) / 6), fallback: 0, cd: 10, max: 3, cond: (c) => c.stage === "runner" && (c.flags.scooterOk || 0) <= c.week,
       title: () => "機車發不動",
       body: () => "老機車電瓶壞了、皮帶也該換了，機車行說要 NT$3,200。",
       options: [
@@ -1348,7 +1352,7 @@
       options: [
         { label: "好！", note: "要先通過德哥的吧台考試（看調飲和信任）；沒過要再練兩週", apply: (c) => {
           const p = clamp(0.35 + (c.skills.brew - 25) / 30 + (c.trust - 45) / 80, 0.25, 0.9);
-          if (chance(c, p)) { c.stage = "clerk"; c.stageWeeks = 0; c.trust += 5; log(c, "吧台考試過了。你換上店員的圍裙，正式站進吧台。"); }
+          if (chance(c, p)) { c.stage = "clerk"; c.stageWeeks = 0; c.trust += 5; c.flags.probationDone = 0; log(c, "吧台考試過了。你換上店員的圍裙，正式站進吧台。"); }
           else { c.flags.clerkLater = c.week + 2; c.trust -= 2; log(c, pick(c, ["考試那天手一直抖，三杯裡兩杯糖度做錯。德哥說：「再練兩週。」", "尖峰時段讓你試站吧台，單子一多就亂了，客人等了二十分鐘。德哥把你換下來。"])); }
         } },
         { label: "再跑一陣子外送", note: "小費比較多；之後再問", apply: (c) => { c.flags.clerkLater = c.week + 6; } },
@@ -1369,7 +1373,8 @@
       ],
     },
   };
-  const RANDOM_IDS = Object.keys(EVENTS).filter((k) => EVENTS[k].weight > 0);
+  const RANDOM_IDS = Object.keys(EVENTS).filter((k) => typeof EVENTS[k].weight === "function" || EVENTS[k].weight > 0);
+  const weightOf = (c, id) => (typeof EVENTS[id].weight === "function" ? EVENTS[id].weight(c) : EVENTS[id].weight);
 
   function ev(c, id, data) {
     const make = EVENTS[id] && EVENTS[id].make;
@@ -1541,11 +1546,32 @@
     // 體力：每週自然恢復，超時多扣
     c.energy += 26 + (c.fit || 0) * 0.6 - (c.flags.farHome ? 3 : 0) - ((c.flags.hotRoom || 0) > c.week ? 3 : 0) -Math.max(0, used - BASE_HOURS) * 1.2 - paidHours * 0.35;
     if (paidHours < 16) { c.trust -= 3; out.push({ text: "這週班排得很少，德哥問你是不是不想做了。" }); }
+    // 連續三週超過 54 小時：過勞，之後兩週學得慢、恢復也慢
+    if (used > 54) c.overWeeks = (c.overWeeks || 0) + 1;
+    else c.overWeeks = 0;
+    if (c.overWeeks >= 3) {
+      c.overWeeks = 0; c.flags.burnout = c.week + 3; c.energy -= 10;
+      out.push({ text: "連續好幾週超時，你過勞了：接下來兩週學東西比較慢，體力也恢復得慢。" });
+    }
+    if ((c.flags.burnout || 0) > c.week) c.energy -= 5;
+    // 太久沒練的能力會生疏（20 以上才會退）
+    c.lastTrain = c.lastTrain || {};
+    const rusty = [];
+    for (const [k, l] of [["brew", "調飲"], ["service", "服務"], ["ops", "營運"], ["lead", "帶人"]]) {
+      if (c.skills[k] > 20 && c.week - (c.lastTrain[k] ?? c.week) >= 4) { c.skills[k] -= 1; rusty.push(l); }
+    }
+    if (rusty.length) out.push({ text: `太久沒練，${rusty.join("、")}有點生疏了（−1）。` });
+    // 存款變負數：刷卡、借錢周轉，要付利息
+    if (c.savings < 0) {
+      const interest = round(-c.savings * 0.03);
+      c.savings -= interest;
+      out.push({ text: `存款是負的，靠刷卡周轉，這週利息 ${T.fmtMoney(interest)}。` });
+    }
     c.flags.extraHours = 0;
     c.flags.skipHours = 0;
     normalize(c);
 
-    const report = { week: c.week, stage: c.stage, pay: round(pay), tips: round(o.tips || 0), living, savingsStart: round(savingsStart), savings: round(c.savings), energy: round(c.energy), lines: out };
+    const report ={ week: c.week, stage: c.stage, pay: round(pay), tips: round(o.tips || 0), living, savingsStart: round(savingsStart), savings: round(c.savings), energy: round(c.energy), lines: out };
     c.history.push({ week: c.week, savings: round(c.savings), energy: round(c.energy), trust: round(c.trust) });
 
     c.lastPlan = c.plan.slice();
@@ -1570,9 +1596,27 @@
         }
       }
     }
+    // 店員試用期：升上來第 4 週，老闆信任不到 45 就調回外送
+    if (!c.over && c.stage === "clerk" && c.stageWeeks === 4 && !c.flags.probationDone) {
+      c.flags.probationDone = 1;
+      if (c.trust < 45) {
+        c.stage = "runner"; c.stageWeeks = 0; c.flags.clerkLater = c.week + 3; c.flags.probationDone = 0;
+        log(c, "試用期結束，德哥說你還不夠穩，先回去跑外送。");
+        report.lines.push({ text: "店員試用期沒過（老闆信任不到 45），你被調回外送。" });
+      } else report.lines.push({ text: "店員試用期過了，德哥把你的名字寫上正式班表。" });
+    }
     if (!c.over) {
       if (c.energy <= 5) c.inbox.push(ev(c, "sick"));
       const g = goals(c);
+      // 店長的位子不一定是你的：第一次符合條件時，德哥可能先讓阿凱試（信任 90 以上機會減半）
+      if (c.stage === "clerk" && g.every((x) => x.ok) && !c.flags.rivalChecked) {
+        c.flags.rivalChecked = 1;
+        if (chance(c, c.trust >= 90 ? 0.2 : 0.4)) {
+          c.flags.managerLater = Math.max(c.flags.managerLater || 0, c.week + 4);
+          log(c, "德哥先讓阿凱代理第二家店的店長。你心裡很不是滋味。");
+          report.lines.push({ text: "德哥先讓同事阿凱試當店長，你要再等四週看他做得怎樣。" });
+        }
+      }
       if (c.stage === "runner" && g.every((x) => x.ok) && (c.flags.clerkLater || 0) <= c.week && !c.inbox.some((x) => x.id === "promote_clerk")) c.inbox.push(ev(c, "promote_clerk"));
       if (c.stage === "clerk" && g.every((x) => x.ok) && (c.flags.managerLater || 0) <= c.week && !c.inbox.some((x) => x.id === "promote_manager")) c.inbox.push(ev(c, "promote_manager"));
       rollEvents(c);
@@ -1597,11 +1641,11 @@
         return !e.cond || e.cond(c);
       });
       if (!pool.length) return;
-      const total = pool.reduce((a, id) => a + EVENTS[id].weight, 0);
+      const total = pool.reduce((a, id) => a + weightOf(c, id), 0);
       let r = rand(c) * total;
       let chosen = pool[0];
       for (const id of pool) {
-        r -= EVENTS[id].weight;
+        r -= weightOf(c, id);
         if (r <= 0) { chosen = id; break; }
       }
       c.cooldown[chosen] = c.week;
