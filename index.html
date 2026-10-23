@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>茶飲董事長</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* 版面：手機優先的單欄「店務板」——上方狀態列、中間卡片、下方分頁與結束本週按鈕 */
+:root {
+  --bg: #eef3f0; --surface: #ffffff; --surface-2: #f6f9f7; --ink: #1d2925; --muted: #5a6a64; --line: #d3ddd8;
+  --brew: #8a4a22; --brew-soft: #f4e6dc; --jade: #2c7a66; --jade-soft: #dcefe8; --mango: #b77a0c; --mango-soft: #fbefd2; --berry: #bf3b48; --berry-soft: #f9e0e2;
+  --display: "Huninn", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  --body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111816; --surface: #1a2320; --surface-2: #202b27; --ink: #e5ece9; --muted: #9aa9a3; --line: #2e3a36;
+  --brew: #d99668; --brew-soft: #3a2a20; --jade: #5ec3a3; --jade-soft: #1c3a31; --mango: #e7b54b; --mango-soft: #3a3020; --berry: #ec7480; --berry-soft: #3d2226; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #111816; --surface: #1a2320; --surface-2: #202b27; --ink: #e5ece9; --muted: #9aa9a3; --line: #2e3a36;
+  --brew: #d99668; --brew-soft: #3a2a20; --jade: #5ec3a3; --jade-soft: #1c3a31; --mango: #e7b54b; --mango-soft: #3a3020; --berry: #ec7480; --berry-soft: #3d2226; color-scheme: dark }
+* { box-sizing: border-box }
+html, body { height: 100% }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface) }
+button { font: inherit; color: inherit; cursor: pointer }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid var(--brew); outline-offset: 2px }
+.wrap { max-width: 720px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 12px 150px }
+h1, h2, h3 { font-family: var(--display); font-weight: 400; text-wrap: balance; margin: 0 }
+.num { font-variant-numeric: tabular-nums }
+.muted { color: var(--muted) }
+.small { font-size: 13px }
+
+/* 頂部狀態列 */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line) }
+.top-inner { max-width: 720px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 10px; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center }
+.brand { font-family: var(--display); font-size: 20px; line-height: 1.2 }
+.when { font-size: 13px; color: var(--muted) }
+.stats { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px }
+.stats b { font-weight: 700 }
+.cash-neg { color: var(--berry) }
+.meter { display: inline-block; width: 54px; height: 6px; background: var(--line); border-radius: 3px; vertical-align: middle; overflow: hidden }
+.meter i { display: block; height: 100% }
+
+/* 卡片與群組 */
+.group { display: grid; gap: 8px; margin-top: 18px }
+.group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px }
+.group-head h2 { font-size: 18px }
+.tag { font-size: 12px; letter-spacing: .04em; padding: 2px 8px; border-radius: 999px }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; text-align: left; width: 100%; display: grid; gap: 4px }
+button.card:hover { border-color: var(--brew) }
+.card .t { font-weight: 700 }
+.card.urgent { border-left: 5px solid var(--berry) }
+.card.opportunity { border-left: 5px solid var(--jade) }
+.card.people { border-left: 5px solid var(--mango) }
+.empty { color: var(--muted); font-size: 14px; padding: 4px 2px }
+.hours { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; display: grid; gap: 8px }
+.bar { height: 12px; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--line); position: relative; overflow: hidden }
+.bar .fill { position: absolute; inset: 0 auto 0 0; background: var(--jade) }
+.bar .over { position: absolute; inset: 0 auto 0 0; background: var(--mango) }
+.bar .mark { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--ink); opacity: .5 }
+.plan { display: grid; gap: 6px }
+.plan-row { display: flex; align-items: center; gap: 8px; background: var(--surface-2); border-radius: 10px; padding: 6px 6px 6px 12px; min-width: 0 }
+.plan-row span { flex: 1; min-width: 0 }
+.x { border: 0; background: transparent; width: 32px; height: 32px; border-radius: 8px; color: var(--muted) }
+.x:hover { background: var(--berry-soft); color: var(--berry) }
+.actions { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px }
+.act { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; text-align: left; display: grid; gap: 2px }
+.act:hover:not(:disabled) { border-color: var(--brew); background: var(--brew-soft) }
+.act:disabled { opacity: .45; cursor: not-allowed }
+.act .h { font-size: 12px; color: var(--muted) }
+
+/* 門市 */
+.store { display: grid; gap: 10px }
+.kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px 12px }
+.kpi .l { font-size: 12px; color: var(--muted) }
+.kpi .v { font-size: 17px; font-weight: 700 }
+.staff { display: grid; gap: 6px }
+.person { display: grid; grid-template-columns: 1fr 90px; gap: 2px 10px; align-items: center; padding: 6px 0; border-top: 1px dashed var(--line) }
+.person .who { min-width: 0 }
+.mor { height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; border: 1px solid var(--line) }
+.mor i { display: block; height: 100% }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px }
+select, input[type=text] { font: inherit; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink) }
+.pill { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 12px }
+.pill.on { background: var(--jade-soft); border-color: var(--jade); color: var(--ink) }
+
+/* 菜單 */
+.item { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 10px 0; border-top: 1px dashed var(--line) }
+.price { display: flex; align-items: center; gap: 6px }
+.price button { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface) }
+
+/* 報表 */
+canvas { width: 100%; height: 200px; display: block }
+.news { display: grid; gap: 6px; font-size: 14px }
+.news div { padding: 6px 0; border-top: 1px dashed var(--line) }
+
+/* 底部 */
+.bottom { position: fixed; inset: auto 0 0 0; z-index: 6; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px) }
+.bottom-inner { max-width: 720px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 8px; display: grid; gap: 8px }
+.end { width: 100%; border: 0; border-radius: 12px; padding: 13px; background: var(--brew); color: var(--surface); font-family: var(--display); font-size: 18px }
+.end:hover { filter: brightness(1.08) }
+.tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px }
+.tabs button { border: 0; background: transparent; padding: 6px; border-radius: 10px; color: var(--muted) }
+.tabs button[aria-selected="true"] { background: var(--brew-soft); color: var(--ink); font-weight: 700 }
+
+/* 對話框 */
+.sheet-bg { position: fixed; inset: 0; z-index: 20; background: rgb(0 0 0 / .42); display: grid; align-items: end; justify-items: center }
+.sheet { background: var(--surface); width: min(720px, 100%); max-height: 88%; overflow: auto; border-radius: 18px 18px 0 0; padding: 18px max(16px, env(safe-area-inset-right, 0px)) calc(18px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); display: grid; gap: 12px }
+.sheet h2 { font-size: 22px }
+.opt { border: 1px solid var(--line); background: var(--surface-2); border-radius: 12px; padding: 12px 14px; text-align: left; display: grid; gap: 2px }
+.opt:hover { border-color: var(--brew); background: var(--brew-soft) }
+.opt .n { font-size: 13px; color: var(--muted) }
+.close { justify-self: start; border: 1px solid var(--line); background: transparent; border-radius: 10px; padding: 8px 14px }
+.report-line { padding: 8px 0; border-top: 1px dashed var(--line) }
+.table-wrap { overflow-x: auto }
+table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums }
+th, td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap }
+th:first-child, td:first-child { text-align: left }
+.good { color: var(--jade) } .bad { color: var(--berry) } .warn { color: var(--mango) }
+
+/* 開局 */
+.start { display: grid; gap: 16px; padding-block: 24px 40px }
+.start h1 { font-size: clamp(34px, 9vw, 52px); line-height: 1.1 }
+.offers { display: grid; gap: 10px }
+.offer { border: 2px solid var(--line); background: var(--surface); border-radius: var(--radius); padding: 14px; text-align: left; display: grid; gap: 4px }
+.offer[aria-pressed="true"] { border-color: var(--brew); background: var(--brew-soft) }
+.cup { font-family: var(--display); color: var(--brew) }
+@media (prefers-reduced-motion: no-preference) { .sheet { animation: up .18s ease-out } @keyframes up { from { transform: translateY(24px); opacity: .6 } } }
+</style>
+
+<div id="app"></div>
+<script src="sim.js?v=6" charset="utf-8"></script>
+<script src="career.js?v=6" charset="utf-8"></script>
+<script>
+"use strict";
+const T = globalThis.TeaSim;
+const C = globalThis.TeaCareer;
+const SAVE_KEY = "teaProto.save.v1";
+let S = null;            // 遊戲狀態
+let tab = "week";
+let sheet = null;        // 目前開著的對話框 { kind, ... }
+let startSeed = (Date.now() ^ 0x5f3759df) >>> 0;
+let startPick = 0;
+let startMode = "brand"; // brand：創業董事長；career：從外送小弟做起
+
+const $ = (sel) => document.querySelector(sel);
+const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const money = (v) => T.fmtMoney(v);
+const wan = (v) => (v < 0 ? "−" : "") + (Math.abs(v) / 10000).toFixed(Math.abs(v) >= 1e6 ? 0 : 1) + " 萬";
+
+function save() { try { if (S) localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {} }
+function load() { try { const t = localStorage.getItem(SAVE_KEY); return t ? JSON.parse(t) : null; } catch (e) { return null; } }
+function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
+
+function stars(rep) {
+  const v = Math.round(rep / 20 * 10) / 10;
+  return v.toFixed(1) + " ★";
+}
+function moraleColor(m) { return m >= 60 ? "var(--jade)" : m >= 35 ? "var(--mango)" : "var(--berry)"; }
+
+// ---------- 開局 ----------
+function renderStart() {
+  const saved = load();
+  const offers = T.offersForStart(startSeed);
+  $("#app").innerHTML = `
+  <div class="wrap start">
+    <p class="cup small">手搖飲連鎖 · 可玩原型</p>
+    <h1>茶飲董事長</h1>
+    <div class="offers" style="grid-template-columns:1fr 1fr">
+      <button class="offer" aria-pressed="${startMode === "brand"}" data-mode="brand"><b>劇本一：創業董事長</b><span class="small muted">帶著 300 萬開第一家店，三年內做出品牌。</span></button>
+      <button class="offer" aria-pressed="${startMode === "career"}" data-mode="career"><b>劇本二：從外送小弟做起</b><span class="small muted">十九歲進飲料店跑外送，一路升店員、店長，最後買下品牌。</span></button>
+    </div>
+    ${startMode === "career" ? `
+    <p>你在「阿德茶舖」找到第一份工作：外送小弟。每週安排班表、練手藝、存錢；做得好，德哥會讓你站吧台、當店長，總有一天把品牌交給你。</p>
+    <label class="small muted" for="pname">你的名字</label>
+    <input type="text" id="pname" maxlength="8" value="阿哲">
+    <button class="end" id="gocareer">第一天上班</button>
+    <p class="small muted">存檔只在這個瀏覽器裡。</p>
+  </div>` : `
+    <p>你有 <b>NT$3,000,000</b>，要從一家店開始，三年內把自己的茶飲品牌做起來。每週你只有 40 小時，事情永遠比時間多。</p>
+    <label class="small muted" for="brand">品牌名稱</label>
+    <input type="text" id="brand" maxlength="16" value="${esc(saved && saved.brand ? saved.brand : "日日茶")}">
+    <div class="group-head"><h2>選第一家店</h2><button class="close" id="reroll">換一批地點</button></div>
+    <div class="offers">${offers.map((o, i) => {
+      const loc = T.LOCATIONS[o.key];
+      return `<button class="offer" aria-pressed="${i === startPick}" data-i="${i}">
+        <span class="t"><b>${esc(o.district)}${loc.name}</b></span>
+        <span class="num small">月租 ${money(o.rent)} · 預估每天 ${Math.round(o.base * 0.9)}～${Math.round(o.base * 1.15)} 杯</span>
+        <span class="small muted">${loc.note}</span></button>`;
+    }).join("")}</div>
+    <button class="end" id="go">開幕</button>
+    <p class="small muted">存檔只在這個瀏覽器裡。這是原型：數值還在調，歡迎玩玩看哪裡好玩、哪裡無聊。</p>
+  </div>`}`;
+  document.querySelectorAll("[data-mode]").forEach((b) => b.onclick = () => { startMode = b.dataset.mode; renderStart(); });
+  const gc = $("#gocareer");
+  if (gc) { gc.onclick = () => { S = C.newCareer($("#pname").value.trim() || "阿哲", startSeed); tab = "week"; save(); render(); }; return; }
+  document.querySelectorAll(".offer[data-i]").forEach((b) => b.onclick = () => { startPick = Number(b.dataset.i); renderStart(); });
+  $("#reroll").onclick = () => { startSeed = (startSeed * 1664525 + 1013904223) >>> 0; startPick = 0; renderStart(); };
+  $("#go").onclick = () => {
+    const brand = $("#brand").value.trim() || "日日茶";
+    S = T.newGame(brand, startSeed, offers[startPick]);
+    tab = "week"; save(); render();
+  };
+}
+
+// ---------- 主畫面 ----------
+function render() {
+  if (!S) return renderStart();
+  if (S.scenario === "career") return renderCareer();
+  const mgr = S.mode === "manager";
+  const v = T.view(S);
+  const cal = v.cal;
+  $("#app").innerHTML = `
+  <header class="top"><div class="top-inner">
+    <div class="brand">${esc(S.brand)}${S.career ? `<span class="small muted"> · ${S.mode === "manager" ? "店長" : "董事長"} ${esc(S.career.name)}</span>` : ""}</div>
+    <div class="when num">第 ${cal.year} 年 第 ${cal.weekOfYear} 週 · ${cal.seasonName} <button class="pill small" id="restart" aria-label="放棄這一局，重新開始">重新開始</button></div>
+    <div class="stats num">
+      ${mgr ? `<span>你的存款 <b>${wan(S.career.savings)}</b></span><span>老闆信任 ${meterHtml(S.career.trust, true)}</span>` : ""}
+      <span>${mgr ? "店裡現金" : "現金"} <b class="${S.cash < 0 ? "cash-neg" : ""}">${wan(S.cash)}</b></span>
+      <span>門市 <b>${S.stores.length}</b></span>
+      <span>聲譽 <b>${stars(S.rep)}</b></span>
+      <span>${mgr ? "店長" : "董事長"}壓力 <span class="meter" aria-label="壓力 ${Math.round(S.stress)}"><i style="width:${S.stress}%;background:${S.stress > 75 ? "var(--berry)" : S.stress > 50 ? "var(--mango)" : "var(--jade)"}"></i></span></span>
+    </div>
+  </div></header>
+  <main class="wrap" id="main">${tab === "week" ? weekView(v) : tab === "stores" ? storesView() : tab === "menu" ? menuView() : reportsView()}</main>
+  <nav class="bottom"><div class="bottom-inner">
+    ${S.over ? `<button class="end" id="newgame">開新的一局</button>` : `<button class="end" id="endweek">結束本週 →</button>`}
+    <div class="tabs" role="tablist">
+      ${[["week", "本週"], ["stores", "門市"], ["menu", "菜單"], ["reports", "報表"]].map(([k, l]) => `<button role="tab" aria-selected="${tab === k}" data-tab="${k}">${l}</button>`).join("")}
+    </div>
+  </div></nav>
+  ${sheet ? renderSheet() : ""}`;
+  bind();
+  if (tab === "reports") drawChart();
+}
+
+function eventCard(e) {
+  return `<button class="card ${e.cat}" data-event="${e.uid}"><span class="t">${esc(e.title)}</span><span class="small muted">${esc(e.body).slice(0, 60)}${e.body.length > 60 ? "…" : ""}</span></button>`;
+}
+
+function weekView(v) {
+  const used = v.hoursUsed, base = v.hoursBase, max = v.hoursMax;
+  const pct = Math.min(used, base) / max * 100, overPct = Math.max(0, used - base) / max * 100;
+  const planRows = S.plan.map((p, i) => {
+    const a = T.ACTIONS[p.action];
+    let target = "";
+    if (a.needs === "store") { const st = T.storeById(S, p.target); target = st ? " · " + T.sname(st) : ""; }
+    if (a.needs === "staff") { const f = T.staffById(S, p.target); target = f ? " · " + f.person.name : ""; }
+    if (a.needs === "campaign") target = " · " + T.CAMPAIGNS[p.target].name;
+    return `<div class="plan-row"><span>${a.name}${esc(target)}</span><span class="small muted num">${a.hours} 小時</span><button class="x" data-unplan="${i}" aria-label="取消${a.name}">✕</button></div>`;
+  }).join("");
+  const actions = Object.entries(T.ACTIONS).filter(([k]) => T.actionVisible(S, k)).map(([k, a]) => {
+    const disabled = !a.needs && T.canPlan(S, k);
+    return `<button class="act" data-action="${k}" ${disabled ? "disabled" : ""} title="${esc(disabled || a.desc)}"><span><b>${a.name}</b> <span class="small muted num">${a.hours}h</span></span><span class="h">${esc(disabled || a.desc)}</span></button>`;
+  }).join("");
+  const sec = (title, cls, items, emptyText) => `
+    <section class="group"><div class="group-head"><h2>${title}</h2><span class="tag ${cls}" style="background:var(--${cls === "urgent" ? "berry" : cls === "opportunity" ? "jade" : "mango"}-soft)">${items.length} 件</span></div>
+    ${items.length ? items.map(eventCard).join("") : `<div class="empty">${emptyText}</div>`}</section>`;
+  return `
+    ${S.over ? endingBlock() : ""}
+    ${S.mode === "manager" ? managerGoal() : ""}
+    <section class="hours">
+      <div class="group-head"><h2>你的時間</h2><span class="num">${used} / ${base} 小時${used > base ? `（加班 ${used - base}）` : ""}</span></div>
+      <div class="bar"><span class="fill" style="width:${pct}%"></span><span class="over" style="left:${base / max * 100}%;width:${overPct}%"></span><span class="mark" style="left:${base / max * 100}%"></span></div>
+      ${(S.lastPlan || []).length && !S.plan.length ? `<button class="pill" id="repeatlast">↻ 照上週排（${S.lastPlan.length} 項）</button>` : ""}
+      <div class="plan">${planRows || `<div class="empty">還沒安排行程。從下面挑幾件事做；沒處理的急件會照預設方式辦理。</div>`}</div>
+      <div class="small muted">不用排滿：沒排的時間會用在日常事務，${S.mode === "manager" ? "店長" : "董事長"}壓力會下降；超過 ${base} 小時才算加班。想把時間塞滿，可以重複排「處理公文與會議」或到各門市坐鎮。</div>
+    </section>
+    ${sec("急件", "urgent", v.urgent, "目前沒有急件。")}
+    ${sec("機會", "opportunity", v.opportunity, "這週沒有新機會。去找新店址或研發新品，機會就會出現。")}
+    ${sec("有人找你", "people", v.people, "沒有人找你。偶爾主動找員工聊聊吧。")}
+    <section class="group"><div class="group-head"><h2>安排行動</h2><span class="small muted">超過 40 小時算加班，壓力會上升</span></div>
+      <div class="actions">${actions}</div></section>`;
+}
+
+function endingBlock() {
+  const o = S.over;
+  return `<section class="card" style="border-color:var(--brew)"><span class="cup">結局 · 評級 ${o.grade}</span><h2>${esc(o.title)}</h2><p>${esc(o.text)}</p></section>`;
+}
+
+function storesView() {
+  const cards = S.stores.map((st) => {
+    const lw = st.lastWeek;
+    const opening = st.openWeek > S.week;
+    const loc = T.LOCATIONS[st.key];
+    const k = (l, val, cls) => `<div class="kpi"><div class="l">${l}</div><div class="v num ${cls || ""}">${val}</div></div>`;
+    return `<section class="card store">
+      <div class="group-head"><h2>${esc(T.sname(st))}</h2><span class="small muted num">月租 ${wan(st.rent)}</span></div>
+      ${opening ? `<div class="warn">裝潢中，第 ${T.calendar(st.openWeek).weekOfYear} 週開幕</div>` : lw ? `<div class="kpis">
+        ${k("上週營收", wan(lw.revenue))}
+        ${k("店淨利", wan(lw.profit), lw.profit >= 0 ? "good" : "bad")}
+        ${k("售出／需求", `${lw.served} / ${lw.demand}`)}
+        ${k("流失客人", lw.lost, lw.lost > lw.served * 0.1 ? "bad" : "")}
+        ${k("耗損率", Math.round(lw.wasteRate * 100) + "%", lw.wasteRate > 0.15 ? "warn" : "")}
+        ${k("每日產能", lw.capacityDay + " 杯")}
+      </div>` : `<div class="muted small">還沒有營業資料，結束本週後會出現。</div>`}
+      <div class="row small"><label for="prep-${st.id}">備料</label>
+        <select id="prep-${st.id}" data-prep="${st.id}">
+          ${[["conservative", "保守（少浪費，可能缺貨）"], ["normal", "一般"], ["aggressive", "積極（不缺貨，浪費多）"]].map(([v, l]) => `<option value="${v}" ${st.prep === v ? "selected" : ""}>${l}</option>`).join("")}
+        </select>
+        <span class="muted">${esc(loc.note)}</span></div>
+      <div class="staff">${st.staff.map((p) => `<div class="person">
+        <div class="who"><b>${esc(p.name)}</b> <span class="small muted">${T.ROLES[p.role].name}${p.student ? "・學生" : ""}</span><div class="small muted">${esc(p.trait)} · 速度 ${p.speed} · 品質 ${p.quality}</div></div>
+        <div><div class="mor" aria-label="士氣 ${Math.round(p.morale)}"><i style="width:${p.morale}%;background:${moraleColor(p.morale)}"></i></div><div class="small muted num">士氣 ${Math.round(p.morale)}</div></div>
+      </div>`).join("")}</div>
+    </section>`;
+  }).join("");
+  return `<section class="group"><div class="group-head"><h2>全品牌設定</h2></div>
+    <div class="row"><button class="pill ${S.delivery ? "on" : ""}" id="delivery" ${S.mode === "manager" ? "disabled" : ""}>${S.delivery ? "✓ 已上架外送平台" : "未上架外送平台"}</button>
+    <span class="small muted">外送訂單多約一成六，那部分營收被抽三成。原料成本 ${S.costMod >= 0 ? "+" : ""}${Math.round(S.costMod * 100)}%。</span></div></section>
+    <section class="group"><div class="group-head"><h2>門市</h2></div>${cards}</section>`;
+}
+
+function menuView() {
+  const items = S.menu.map((m, i) => {
+    const p = { ...T.PRODUCTS[m.key], name: T.productName(S, m.key) };
+    const lock = S.mode === "manager" ? "disabled" : "";
+    const margin = Math.round((1 - p.cost * (1 + S.costMod) / m.price) * 100);
+    return `<div class="item"><div><b>${p.name}</b> <span class="small muted">原料 ${Math.round(p.cost * (1 + S.costMod))} 元 · 毛利約 ${margin}%</span>
+      <div class="row small"><button class="pill ${m.active ? "on" : ""}" data-toggle="${i}" ${lock}>${m.active ? "販售中" : "下架"}</button>${m.price !== p.price ? `<span class="muted">建議價 ${p.price}</span>` : ""}</div></div>
+      <div class="price"><button data-price="${i}" data-d="-5" aria-label="${p.name}降價" ${lock}>−</button><b class="num">${m.price}</b><button data-price="${i}" data-d="5" aria-label="${p.name}漲價" ${lock}>＋</button></div></div>`;
+  }).join("");
+  const ideas = Object.keys(T.PRODUCTS).filter((k) => T.PRODUCTS[k].idea && !S.menu.some((m) => m.key === k));
+  return `<section class="group"><div class="group-head"><h2>菜單</h2><span class="small muted">${S.mode === "manager" ? "價格與上下架由老闆決定" : "價格越高，客人越少"}</span></div><div class="card">${items}</div></section>
+  <section class="group"><div class="group-head"><h2>研發中</h2></div><div class="card">
+    ${ideas.length ? `<label class="small muted" for="idea">下一款要研發</label>
+    <select id="idea">${ideas.map((k) => `<option value="${k}" ${S.research.idea === k ? "selected" : ""}>${T.PRODUCTS[k].name}（建議價 ${T.PRODUCTS[k].price}）</option>`).join("")}</select>
+    <div class="bar" style="margin-top:8px"><span class="fill" style="width:${S.research.progress}%"></span></div>
+    <div class="small muted num">進度 ${S.research.progress}% · 在「本週」安排「研發新品」推進</div>` : `<div class="muted">所有新品都研發完了。</div>`}
+  </div></section>`;
+}
+
+function reportsView() {
+  const r = S.lastReport;
+  return `<section class="group"><div class="group-head"><h2>現金與每週淨利</h2><span class="small muted">最近 52 週</span></div>
+    <div class="card"><canvas id="chart" width="680" height="200" aria-label="現金與每週淨利圖"></canvas>
+    <div class="small muted"><span class="good">—— 現金</span>　<span class="warn">▮ 每週淨利</span></div></div></section>
+    ${r ? `<section class="group"><div class="group-head"><h2>上週</h2></div><div class="card num">營收 ${money(r.revenue)} · 淨利 <span class="${r.profit >= 0 ? "good" : "bad"}">${money(r.profit)}</span> · 累積淨利 ${money(S.profitTotal)}</div></section>` : ""}
+    <section class="group"><div class="group-head"><h2>對手</h2></div>${S.rivals.map((x) => `<div class="card"><b>${esc(x.name)}</b><span class="small muted">${esc(x.style)} · 門市 ${x.stores} 家 · 聲譽 ${stars(x.rep)}</span></div>`).join("")}</section>
+    <section class="group"><div class="group-head"><h2>品牌大事記</h2></div><div class="card news">${S.news.slice(0, 30).map((n) => `<div><span class="small muted num">第 ${T.calendar(n.week).year} 年 ${T.calendar(n.week).weekOfYear} 週</span><br>${esc(n.text)}</div>`).join("")}</div></section>`;
+}
+
+function drawChart() {
+  const c = $("#chart");
+  if (!c) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = c.clientWidth, h = c.clientHeight;
+  c.width = w * dpr; c.height = h * dpr;
+  const g = c.getContext("2d");
+  g.scale(dpr, dpr);
+  const cs = getComputedStyle(document.documentElement);
+  const col = (n) => cs.getPropertyValue(n).trim();
+  const data = S.history.slice(-52);
+  g.fillStyle = col("--muted"); g.font = "12px " + col("--body");
+  if (data.length < 2) { g.fillText("結束幾週後這裡會出現走勢。", 10, h / 2); return; }
+  const pad = { l: 46, r: 8, t: 10, b: 18 };
+  const cashMax = Math.max(...data.map((d) => d.cash), 1), cashMin = Math.min(0, ...data.map((d) => d.cash));
+  const pMax = Math.max(1, ...data.map((d) => Math.abs(d.profit)));
+  const x = (i) => pad.l + (i / (data.length - 1)) * (w - pad.l - pad.r);
+  const yCash = (v) => pad.t + (1 - (v - cashMin) / (cashMax - cashMin || 1)) * (h - pad.t - pad.b);
+  const mid = pad.t + (h - pad.t - pad.b) / 2;
+  g.strokeStyle = col("--line"); g.lineWidth = 1;
+  [0, 0.5, 1].forEach((f) => { const yy = pad.t + f * (h - pad.t - pad.b); g.beginPath(); g.moveTo(pad.l, yy); g.lineTo(w - pad.r, yy); g.stroke(); });
+  const bw = Math.max(2, (w - pad.l - pad.r) / data.length * 0.6);
+  data.forEach((d, i) => { const bh = (d.profit / pMax) * (h - pad.t - pad.b) / 2 * 0.9; g.fillStyle = d.profit >= 0 ? col("--mango") : col("--berry"); g.fillRect(x(i) - bw / 2, d.profit >= 0 ? mid - bh : mid, bw, Math.abs(bh)); });
+  g.strokeStyle = col("--jade"); g.lineWidth = 2.5; g.beginPath();
+  data.forEach((d, i) => (i ? g.lineTo(x(i), yCash(d.cash)) : g.moveTo(x(i), yCash(d.cash)))); g.stroke();
+  g.fillStyle = col("--jade"); g.beginPath(); g.arc(x(data.length - 1), yCash(data[data.length - 1].cash), 4, 0, Math.PI * 2); g.fill();
+  g.fillStyle = col("--muted"); g.textAlign = "right";
+  g.fillText(wan(cashMax), pad.l - 6, pad.t + 10); g.fillText(wan(cashMin), pad.l - 6, h - pad.b);
+}
+
+// ---------- 對話框 ----------
+function renderSheet() {
+  let inner = "";
+  if (sheet.kind === "event") {
+    const e = T.view(S);
+    const all = [...e.urgent, ...e.opportunity, ...e.people];
+    const ev = all.find((x) => x.uid === sheet.uid);
+    if (!ev) { sheet = null; return ""; }
+    inner = `<span class="tag" style="justify-self:start;background:var(--${ev.cat === "urgent" ? "berry" : ev.cat === "opportunity" ? "jade" : "mango"}-soft)">${ev.cat === "urgent" ? "急件" : ev.cat === "opportunity" ? "機會" : "有人找你"}</span>
+      <h2>${esc(ev.title)}</h2><p>${esc(ev.body)}</p>
+      ${ev.options.map((o, i) => `<button class="opt" data-opt="${i}"><b>${esc(o.label)}</b>${o.note ? `<span class="n">${esc(o.note)}</span>` : ""}</button>`).join("")}
+      ${ev.cat === "urgent" && ev.fallback >= 0 ? `<p class="small muted">這週沒處理的話，會照「${esc(ev.options[ev.fallback].label)}」辦理。</p>` : ""}
+      <button class="close" data-close>晚點再決定</button>`;
+  } else if (sheet.kind === "pick") {
+    const a = T.ACTIONS[sheet.action];
+    let rows = [];
+    if (a.needs === "store") rows = S.stores.filter((st) => st.openWeek <= S.week).map((st) => ({ id: st.id, label: T.sname(st), note: st.lastWeek ? `上週淨利 ${wan(st.lastWeek.profit)} · 員工 ${st.staff.length} 人` : "" }));
+    if (a.needs === "staff") S.stores.forEach((st) => st.staff.forEach((p) => rows.push({ id: p.id, label: `${p.name}（${T.sname(st)}${T.ROLES[p.role].name}）`, note: `士氣 ${Math.round(p.morale)} · ${p.trait}`, sort: p.morale })));
+    if (a.needs === "staff") rows.sort((x, y) => x.sort - y.sort);
+    if (a.needs === "campaign") rows = Object.entries(T.CAMPAIGNS).filter(([, c]) => !c.hidden).map(([k, c]) => ({ id: k, label: c.name, note: `${c.cost ? "花費 " + money(c.cost) + " · " : ""}${c.weeks} 週 · 來客 +${Math.round(c.demand * 100)}%${c.priceMul < 1 ? ` · 售價 ×${c.priceMul}` : ""}` }));
+    inner = `<h2>${a.name}</h2><p class="muted">${esc(a.desc)}（${a.hours} 小時）</p>
+      ${rows.map((r) => { const err = T.canPlan(S, sheet.action, r.id); return `<button class="opt" data-target="${r.id}" ${err ? "disabled" : ""}><b>${esc(r.label)}</b><span class="n">${esc(err || r.note || "")}</span></button>`; }).join("")}
+      <button class="close" data-close>取消</button>`;
+  } else if (sheet.kind === "report") {
+    const r = sheet.report;
+    const head = r.lines.length ? r.lines : [{ text: "平靜的一週。" }];
+    const weatherIcon = { sunny: "☀", hot: "🔥", rain: "☂", cloudy: "☁", cold: "❄", typhoon: "🌀" };
+    inner = `<span class="cup">第 ${r.cal.year} 年 第 ${r.cal.weekOfYear} 週 週報</span>
+      <h2>淨利 <span class="${r.profit >= 0 ? "good" : "bad"} num">${money(r.profit)}</span></h2>
+      <div class="num small muted">營收 ${money(r.revenue)} · ${S.mode === "manager" ? "店裡現金" : "現金"} ${wan(r.cashStart)} → <b class="${r.cash < 0 ? "bad" : ""}">${wan(r.cash)}</b>${S.mode === "manager" ? ` · 你的存款 ${wan(S.career.savings)}` : ""} · 聲譽 ${stars(r.rep)} · 天氣 ${r.weather.map((w) => weatherIcon[w]).join(" ")}</div>
+      <div>${head.map((l) => `<div class="report-line">${esc(l.text)}</div>`).join("")}</div>
+      ${r.stores.length ? `<div class="table-wrap"><table><thead><tr><th>門市</th><th>營收</th><th>淨利</th><th>售出</th><th>流失</th><th>耗損</th></tr></thead><tbody>
+        ${r.stores.map((st) => `<tr><td>${esc(st.name)}</td><td>${wan(st.revenue)}</td><td class="${st.profit >= 0 ? "good" : "bad"}">${wan(st.profit)}</td><td>${st.served}</td><td>${st.lost}</td><td>${Math.round(st.wasteRate * 100)}%</td></tr>`).join("")}
+      </tbody></table></div>` : ""}
+      ${r.quarterly ? `<div class="card" style="border-color:var(--brew)"><span class="cup">季報</span><b>${esc(r.quarterly.verdict)}</b>
+        <span class="num small">本季營收 ${money(r.quarterly.revenue)} · 淨利 ${money(r.quarterly.profit)}${r.quarterly.growth !== null ? ` · 成長 ${Math.round(r.quarterly.growth * 100)}%` : ""} · 門市 ${r.quarterly.stores} 家</span>
+        <span class="small muted">${r.quarterly.rivals.map((x) => `${esc(x.name)} ${x.stores} 家`).join(" · ")}</span></div>` : ""}
+      ${S.over ? endingBlock() : ""}
+      <button class="end" data-close>${S.over ? "看結局" : "下一週"}</button>`;
+  } else if (sheet.kind === "confirm") {
+    inner = `<h2>放棄這一局？</h2><p>目前的進度會刪除，回到開局畫面。</p>
+      <button class="opt" id="yes-restart"><b>放棄並重新開始</b></button><button class="close" data-close>取消</button>`;
+  }
+  return `<div class="sheet-bg" id="sheetbg"><div class="sheet" role="dialog" aria-modal="true">${inner}</div></div>`;
+}
+
+// ---------- 劇本二：外送小弟與店員階段 ----------
+function meterHtml(v, good) {
+  const col = good ? (v >= 60 ? "var(--jade)" : v >= 35 ? "var(--mango)" : "var(--berry)") : (v > 75 ? "var(--berry)" : v > 50 ? "var(--mango)" : "var(--jade)");
+  return `<span class="meter" aria-label="${Math.round(v)}"><i style="width:${v}%;background:${col}"></i></span> <span class="num">${Math.round(v)}</span>`;
+}
+function managerGoal() {
+  const c = S.career;
+  const weeks = S.week - c.managerWeek;
+  const need = T.BUYOUT_PRICE * 0.2;
+  const row = (l, ok) => `<span class="${ok ? "good" : "muted"}">${ok ? "✓" : "○"} ${l}</span>`;
+  return `<section class="card"><span class="cup">店長 · 第 ${weeks + 1} 週</span>
+    <span class="small">店賺錢你分一成二，虧錢老闆信任會掉；信任掉到 10 以下會被換掉。德哥說過，等你準備好，品牌可以交給你。</span>
+    <div class="row small">${row("當店長 40 週", weeks >= 40)}${row("老闆信任 65", c.trust >= 65)}${row(`存款 ${money(need)}（自備款）`, c.savings >= need)}</div></section>`;
+}
+function careerTitle(c) { return C.STAGES[c.stage].name; }
+
+function renderCareer() {
+  const c = S;
+  const used = C.hoursUsed(c), base = C.BASE_HOURS, max = C.MAX_HOURS;
+  $("#app").innerHTML = `
+  <header class="top"><div class="top-inner">
+    <div class="brand">${esc(c.name)} · ${careerTitle(c)}</div>
+    <div class="when num">第 ${T.calendar(c.week).year} 年 第 ${T.calendar(c.week).weekOfYear} 週 · ${T.calendar(c.week).seasonName} <button class="pill small" id="restart" aria-label="放棄這一局，重新開始">重新開始</button></div>
+    <div class="stats num">
+      <span>存款 <b class="${c.savings < 0 ? "cash-neg" : ""}">${money(c.savings)}</b></span>
+      <span>體力 ${meterHtml(c.energy, true)}</span>
+      <span>老闆信任 ${meterHtml(c.trust, true)}</span>
+    </div>
+  </div></header>
+  <main class="wrap">${tab === "me" ? careerMe(c) : tab === "diary" ? careerDiary(c) : careerWeek(c, used, base, max)}</main>
+  <nav class="bottom"><div class="bottom-inner">
+    ${c.over ? `<button class="end" id="newgame">開新的一局</button>` : `<button class="end" id="endweek">結束本週 →</button>`}
+    <div class="tabs" role="tablist" style="grid-template-columns:repeat(3,1fr)">
+      ${[["week", "本週"], ["me", "我"], ["diary", "日記"]].map(([k, l]) => `<button role="tab" aria-selected="${tab === k}" data-tab="${k}">${l}</button>`).join("")}
+    </div>
+  </div></nav>
+  ${sheet ? careerSheet(c) : ""}`;
+  bindCareer();
+}
+
+function careerWeek(c, used, base, max) {
+  const pct = Math.min(used, base) / max * 100, overPct = Math.max(0, used - base) / max * 100;
+  const skip = c.flags.skipHours ? `<div class="plan-row"><span>請假／休養</span><span class="small muted num">${c.flags.skipHours} 小時</span></div>` : "";
+  const rows = c.plan.map((k, i) => { const a = C.ACTIONS[k]; return `<div class="plan-row"><span>${a.name}</span><span class="small muted num">${a.hours} 小時${a.pay ? " · 有薪" : ""}</span><button class="x" data-unplan="${i}" aria-label="取消${a.name}">✕</button></div>`; }).join("");
+  const acts = Object.entries(C.ACTIONS).filter(([k]) => C.available(c, k)).sort(([, a], [, b]) => (b.stage === "special") - (a.stage === "special")).map(([k, a]) => {
+    const err = C.canPlan(c, k);
+    return `<button class="act" data-action="${k}" ${err ? "disabled" : ""} ${a.stage === "special" ? `style="border-color:var(--mango);background:var(--mango-soft)"` : ""}><span><b>${a.name}</b> <span class="small muted num">${a.hours}h</span></span><span class="h">${esc(err || a.desc)}</span></button>`;
+  }).join("");
+  const inbox = c.inbox.map((inst) => C.eventView(c, inst));
+  const wage = C.STAGES[c.stage].wage + (c.wageBonus || 0);
+  return `
+    ${c.over ? `<section class="card" style="border-color:var(--brew)"><span class="cup">結局 · 評級 ${c.over.grade}</span><h2>${esc(c.over.title)}</h2><p>${esc(c.over.text)}</p></section>` : ""}
+    <section class="hours">
+      <div class="group-head"><h2>這週班表</h2><span class="num">${used} / ${base} 小時${used > base ? `（超時 ${used - base}）` : ""}</span></div>
+      ${(c.lastPlan || []).length && !c.plan.length ? `<button class="pill" id="repeatlast">↻ 照上週排（${c.lastPlan.length} 項）</button>` : ""}
+      <div class="bar"><span class="fill" style="width:${pct}%"></span><span class="over" style="left:${base / max * 100}%;width:${overPct}%"></span><span class="mark" style="left:${base / max * 100}%"></span></div>
+      <div class="plan">${skip}${rows || (skip ? "" : `<div class="empty">還沒排班。時薪 ${wage}，每週生活費 ${money(C.LIVING)}；班排太少，德哥會不高興。</div>`)}</div>
+    </section>
+    <section class="group"><div class="group-head"><h2>發生的事</h2><span class="tag" style="background:var(--mango-soft)">${inbox.length} 件</span></div>
+      ${inbox.length ? inbox.map(eventCard).join("") : `<div class="empty">平靜的一週。</div>`}</section>
+    <section class="group"><div class="group-head"><h2>排班與安排</h2><span class="small muted">超過 ${base} 小時，體力掉得快</span></div>
+      <div class="actions">${acts}</div></section>`;
+}
+
+function careerMe(c) {
+  const sk = [["brew", "調飲"], ["service", "服務"], ["ops", "營運"], ["lead", "帶人"]];
+  const g = C.goals(c);
+  return `<section class="group"><div class="group-head"><h2>${c.stage === "runner" ? "升店員的條件" : "升店長的條件"}</h2></div>
+    <div class="card">${g.map((x) => `<div class="${x.ok ? "good" : ""}">${x.ok ? "✓" : "○"} ${x.label}${x.v !== undefined && !x.ok ? `<span class="small muted num">（現在 ${Math.round(x.v)}）</span>` : ""}</div>`).join("")}</div></section>
+    <section class="group"><div class="group-head"><h2>能力</h2><span class="small muted">之後當店長、董事長都用得到</span></div>
+    <div class="card">${sk.map(([k, l]) => `<div><div class="row"><b>${l}</b><span class="num small muted">${Math.round(c.skills[k])}</span></div><div class="bar"><span class="fill" style="width:${c.skills[k]}%"></span></div></div>`).join("")}
+      <div class="small muted">名聲 ${Math.round(c.fame)} · 外送路線熟悉度 ${c.routes}</div></div></section>
+    ${c.stage === "clerk" ? `<section class="group"><div class="group-head"><h2>私房配方「${esc(c.signature.name)}」</h2></div><div class="card">${c.signature.done ? "已經是店內限定商品。當上店長後會放進菜單。" : `<div class="bar"><span class="fill" style="width:${c.signature.progress}%"></span></div><span class="small muted">在「本週」安排「試做私房配方」推進</span>`}</div></section>` : ""}`;
+}
+
+function careerDiary(c) {
+  return `<section class="group"><div class="group-head"><h2>日記</h2></div><div class="card news">${c.log.slice(0, 40).map((n) => `<div><span class="small muted num">第 ${T.calendar(n.week).year} 年 ${T.calendar(n.week).weekOfYear} 週</span><br>${esc(n.text)}</div>`).join("") || `<div class="muted">還沒有記事。</div>`}</div></section>`;
+}
+
+function careerSheet(c) {
+  let inner = "";
+  if (sheet.kind === "event") {
+    const inst = c.inbox.find((x) => x.uid === sheet.uid);
+    if (!inst) { sheet = null; return ""; }
+    const ev = C.eventView(c, inst);
+    inner = `<h2>${esc(ev.title)}</h2><p>${esc(ev.body)}</p>
+      ${ev.options.map((o, i) => `<button class="opt" data-opt="${i}"><b>${esc(o.label)}</b>${o.note ? `<span class="n">${esc(o.note)}</span>` : ""}</button>`).join("")}
+      ${ev.cat === "urgent" && ev.fallback >= 0 ? `<p class="small muted">要在這週內決定；沒決定的話，結束本週時會照預設選「${esc(ev.options[ev.fallback].label)}」。</p>` : ""}
+      <button class="close" data-close>晚點再決定</button>`;
+  } else if (sheet.kind === "pending") {
+    const list = C.pendingUrgent(c);
+    inner = `<h2>還有 ${list.length} 件事沒決定</h2><p>這週結束時，沒決定的事會照預設處理：</p>
+      ${list.map((e) => `<button class="opt" data-event="${e.uid}"><b>${esc(e.title)}</b><span class="n">預設：${esc(e.options[e.fallback].label)}${e.options[e.fallback].note ? `（${esc(e.options[e.fallback].note)}）` : ""}</span></button>`).join("")}
+      <button class="end" id="endanyway">照預設處理，結束本週</button><button class="close" data-close>回去決定</button>`;
+  } else if (sheet.kind === "report") {
+    const r = sheet.report;
+    inner = `<span class="cup">第 ${T.calendar(r.week).year} 年 第 ${T.calendar(r.week).weekOfYear} 週</span>
+      <h2>存款 <span class="num ${r.savings < 0 ? "bad" : ""}">${money(r.savings)}</span></h2>
+      <div class="num small muted">薪水 ${money(r.pay)}${r.tips ? ` · 小費 ${money(r.tips)}` : ""} · 生活費 −${money(r.living)} · 體力 ${r.energy}</div>
+      <div>${(r.lines.length ? r.lines : [{ text: "這週沒排什麼事。" }]).map((l) => `<div class="report-line">${esc(l.text)}</div>`).join("")}</div>
+      <button class="end" data-close>${c.over ? "看結局" : "下一週"}</button>`;
+  } else if (sheet.kind === "confirm") {
+    inner = `<h2>放棄這一局？</h2><p>目前的進度會刪除，回到開局畫面。</p>
+      <button class="opt" id="yes-restart"><b>放棄並重新開始</b></button><button class="close" data-close>取消</button>`;
+  }
+  return `<div class="sheet-bg" id="sheetbg"><div class="sheet" role="dialog" aria-modal="true">${inner}</div></div>`;
+}
+
+function bindCareer() {
+  const c = S;
+  document.querySelectorAll("[data-tab]").forEach((b) => b.onclick = () => { tab = b.dataset.tab; render(); window.scrollTo(0, 0); });
+  const ew = $("#endweek");
+  const finish = () => { const report = C.endWeek(c); save(); sheet = { kind: "report", report }; render(); };
+  if (ew) ew.onclick = () => { if (C.pendingUrgent(c).length) { sheet = { kind: "pending" }; render(); } else finish(); };
+  const rl = $("#repeatlast");
+  if (rl) rl.onclick = () => { C.repeatLast(c); save(); render(); };
+  const ng = $("#newgame");
+  if (ng) ng.onclick = () => { clearSave(); S = null; sheet = null; startSeed = (Date.now() ^ 0x5f3759df) >>> 0; render(); };
+  const ef = $("#endanyway");
+  if (ef) ef.onclick = () => { sheet = null; finish(); };
+  document.querySelectorAll("[data-event]").forEach((b) => b.onclick = () => { sheet = { kind: "event", uid: b.dataset.event }; render(); });
+  document.querySelectorAll("[data-unplan]").forEach((b) => b.onclick = () => { C.unplan(c, Number(b.dataset.unplan)); save(); render(); });
+  document.querySelectorAll("[data-action]").forEach((b) => b.onclick = () => { if (!C.planAction(c, b.dataset.action)) { save(); render(); } });
+  const rs = $("#restart");
+  if (rs) rs.onclick = () => { sheet = { kind: "confirm" }; render(); };
+  const bg = $("#sheetbg");
+  if (!bg) return;
+  bg.onclick = (e) => { if (e.target === bg) { sheet = null; render(); } };
+  document.querySelectorAll("[data-close]").forEach((b) => b.onclick = () => { sheet = null; render(); });
+  document.querySelectorAll("[data-opt]").forEach((b) => b.onclick = () => {
+    C.resolveEvent(c, sheet.uid, Number(b.dataset.opt));
+    sheet = null;
+    // 接下店長：交給經營引擎的店長模式
+    if (c.promoted) { S = C.toManager(c); tab = "week"; }
+    save(); render();
+  });
+  const yes = $("#yes-restart");
+  if (yes) yes.onclick = () => { clearSave(); S = null; sheet = null; startSeed = (Date.now() ^ 0x5f3759df) >>> 0; render(); };
+}
+
+// ---------- 事件綁定 ----------
+function bind() {
+  document.querySelectorAll("[data-tab]").forEach((b) => b.onclick = () => { tab = b.dataset.tab; render(); window.scrollTo(0, 0); });
+  const ew = $("#endweek");
+  if (ew) ew.onclick = () => { const report = T.endWeek(S); save(); sheet = { kind: "report", report }; render(); };
+  const rl = $("#repeatlast");
+  if (rl) rl.onclick = () => { T.repeatLast(S); save(); render(); };
+  const ng = $("#newgame");
+  if (ng) ng.onclick = () => { clearSave(); S = null; sheet = null; startSeed = (Date.now() ^ 0x5f3759df) >>> 0; render(); };
+  document.querySelectorAll("[data-event]").forEach((b) => b.onclick = () => { sheet = { kind: "event", uid: b.dataset.event }; render(); });
+  document.querySelectorAll("[data-unplan]").forEach((b) => b.onclick = () => { T.unplan(S, Number(b.dataset.unplan)); save(); render(); });
+  document.querySelectorAll("[data-action]").forEach((b) => b.onclick = () => {
+    const k = b.dataset.action;
+    if (T.ACTIONS[k].needs) { sheet = { kind: "pick", action: k }; render(); return; }
+    const err = T.planAction(S, k);
+    if (!err) { save(); render(); }
+  });
+  document.querySelectorAll("[data-prep]").forEach((sel) => sel.onchange = () => { const st = T.storeById(S, sel.dataset.prep); st.prep = sel.value; save(); });
+  const del = $("#delivery");
+  if (del) del.onclick = () => { S.delivery = !S.delivery; save(); render(); };
+  document.querySelectorAll("[data-toggle]").forEach((b) => b.onclick = () => { const m = S.menu[Number(b.dataset.toggle)]; if (m.active && S.menu.filter((x) => x.active).length <= 2) return; m.active = !m.active; save(); render(); });
+  document.querySelectorAll("[data-price]").forEach((b) => b.onclick = () => { S.menu[Number(b.dataset.price)].price += Number(b.dataset.d); T.normalize(S); save(); render(); });
+  const idea = $("#idea");
+  if (idea) idea.onchange = () => { S.research.idea = idea.value; save(); };
+  const rs = $("#restart");
+  if (rs) rs.onclick = () => { sheet = { kind: "confirm" }; render(); };
+  // 對話框
+  const bg = $("#sheetbg");
+  if (bg) {
+    bg.onclick = (e) => { if (e.target === bg) { sheet = null; render(); } };
+    document.querySelectorAll("[data-close]").forEach((b) => b.onclick = () => { sheet = null; render(); });
+    document.querySelectorAll("[data-opt]").forEach((b) => b.onclick = () => { T.resolveEvent(S, sheet.uid, Number(b.dataset.opt)); sheet = null; save(); render(); });
+    document.querySelectorAll("[data-target]").forEach((b) => b.onclick = () => { const err = T.planAction(S, sheet.action, b.dataset.target); if (!err) { sheet = null; save(); render(); } });
+    const yes = $("#yes-restart");
+    if (yes) yes.onclick = () => { clearSave(); S = null; sheet = null; startSeed = (Date.now() ^ 0x5f3759df) >>> 0; render(); };
+  }
+}
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && sheet) { sheet = null; render(); } });
+
+// ---------- 啟動（支援檢視器的熱更新保留進度） ----------
+function start(data) {
+  // 熱更新帶回的進度優先；其次是這個瀏覽器的存檔；都沒有就從開局畫面開始
+  const saved = (data && data.S) || load();
+  S = saved && !saved.over ? saved : null;
+  if (saved && saved.over) S = saved;
+  render();
+}
+window.claude?.hot?.snapshot?.(() => ({ S }));
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+</script>
