@@ -124,7 +124,7 @@
       ],
     },
     spill: {
-      cat: "urgent", fallback: 0,
+      cat: "urgent", fallback: 1,
       title: () => "急煞，整袋飲料翻了",
       body: () => "前面的車突然停下，你閃過了，但掛在車上的六杯飲料倒了一半。",
       options: [
@@ -149,7 +149,7 @@
     },
     scooter: {
       // 越久沒保養越容易拋錨
-      cat: "urgent", weight: (c) => Math.min(4, 1 + Math.max(0, c.week - (c.flags.scooterOk || 0)) / 6), fallback: 0, cd: 10, max: 3, cond: (c) => c.stage === "runner" && (c.flags.scooterOk || 0) <= c.week,
+      cat: "urgent", weight: (c) => Math.min(4, 1 + Math.max(0, c.week - (c.flags.scooterOk || 0)) / 6), fallback: 1, cd: 10, max: 3, cond: (c) => c.stage === "runner" && (c.flags.scooterOk || 0) <= c.week,
       title: () => "機車發不動",
       body: () => "老機車電瓶壞了、皮帶也該換了，機車行說要 NT$3,200。",
       options: [
@@ -306,7 +306,7 @@
       options: [{ label: "幫她辦歡送會", note: "−NT$400；帶人 +2", apply: (c) => { c.savings -= 400; gain(c, "lead", 2); log(c, "小美離職前把她的奶蓋祕訣都教給你了。"); gain(c, "brew", 3); } }],
     },
     power_cut: {
-      cat: "urgent", weight: 0.6, fallback: 0, cd: 20, max: 2,
+      cat: "urgent", weight: 0.6, fallback: 1, cd: 20, max: 2,
       title: () => "整條街停電",
       body: () => "冰箱沒電，鮮奶和水果撐不了多久。",
       options: [
@@ -409,7 +409,7 @@
       ],
     },
     traffic_accident: {
-      cat: "urgent", weight: 0.5, fallback: 1, cd: 30, max: 1, cond: (c) => c.stage === "runner" && c.week > 3,
+      cat: "urgent", weight: 0.5, fallback: 0, cd: 30, max: 1, cond: (c) => c.stage === "runner" && c.week > 3,
       title: () => "跟轎車擦撞",
       body: () => "轎車右轉沒打方向燈，你連人帶車倒在路邊。腳踝腫起來了。",
       options: [
@@ -436,7 +436,7 @@
       ],
     },
     till_short: {
-      cat: "urgent", weight: 0.8, fallback: 0, cd: 16, max: 2, cond: (c) => c.stage === "clerk",
+      cat: "urgent", weight: 0.8, fallback: 1, cd: 16, max: 2, cond: (c) => c.stage === "clerk",
       title: (c, d) => `收銀短少 NT$${d.amt || 800}`,
       body: () => "關帳時錢對不起來，今天只有你和工讀生兩個人碰過收銀機。",
       make: (c) => ({ amt: intBetween(c, 3, 20) * 100 }),
@@ -590,7 +590,7 @@
       ],
     },
     scooter_stolen: {
-      cat: "urgent", weight: 0.35, fallback: 0, cd: 40, max: 1, cond: (c) => c.week > 8,
+      cat: "urgent", weight: 0.35, fallback: 1, cd: 40, max: 1, cond: (c) => c.week > 8,
       title: () => "機車被偷了",
       body: () => "早上下樓，停車格空空的。警察說找回來的機會不大。",
       options: [
@@ -791,7 +791,7 @@
       ],
     },
     helmet_stolen: {
-      cat: "urgent", weight: 0.5, fallback: 0, cd: 30, max: 1, cond: (c) => c.stage === "runner",
+      cat: "urgent", weight: 0.5, fallback: 1, cd: 30, max: 1, cond: (c) => c.stage === "runner",
       title: () => "安全帽被偷了",
       body: () => "掛在機車上不到五分鐘就不見了。",
       options: [
@@ -941,7 +941,7 @@
       options: [{ label: "下班留下來研究", note: "看你的營運能力", apply: (c) => { c.energy -= 4; if (c.skills.ops + intBetween(c, 0, 30) >= 35) { gain(c, "ops", 3); c.trust += 3; log(c, "你把新系統摸熟了，還做了一張操作小抄。"); } else { c.trust -= 2; log(c, "第一天上線就當機兩次，排隊排到門外。"); } } }],
     },
     child_slip: {
-      cat: "urgent", weight: 0.5, fallback: 0, cd: 30, max: 1, cond: (c) => c.stage === "clerk",
+      cat: "urgent", weight: 0.5, fallback: 1, cd: 30, max: 1, cond: (c) => c.stage === "clerk",
       title: () => "小孩踩到飲料滑倒",
       body: () => "地上的冰沙還沒擦，小朋友跌倒哭了，家長很生氣。",
       options: [
@@ -1328,7 +1328,7 @@
       options: [{ label: "繳", note: "NT$450～900", apply: (c) => { c.savings -= intBetween(c, 45, 90) * 10; } }],
     },
     back_pain: {
-      cat: "urgent", weight: 0.5, fallback: 0, cd: 20, max: 2, cond: (c) => c.week > 6,
+      cat: "urgent", weight: 0.5, fallback: 1, cd: 20, max: 2, cond: (c) => c.week > 6,
       title: () => "腰痛到彎不下去",
       body: () => "長時間站吧台、騎車，腰終於抗議了。",
       options: [
@@ -1347,7 +1347,7 @@
     },
     // 10/24 第三批：人情開銷與戀愛（使用者：同學結婚、生小孩、過年紅包、戀愛故事）
     classmate_wedding: {
-      cat: "people", weight: 0.7, fallback: 1, cd: 14, max: 4, cond: (c) => c.week > 5,
+      cat: "people", weight: 0.7, fallback: 2, cd: 14, max: 4, cond: (c) => c.week > 5,
       title: () => "同學寄來喜帖",
       body: (c) => `${pick(c, ["高職同班的阿翔", "以前一起打球的小胖", "國中坐你隔壁的佳穎", "高職社團的學姊"])}要結婚了，喜宴在週六晚上。`,
       options: [
@@ -1357,7 +1357,7 @@
       ],
     },
     classmate_baby: {
-      cat: "people", weight: 0.6, fallback: 1, cd: 16, max: 3, cond: (c) => c.week > 8,
+      cat: "people", weight: 0.6, fallback: 2, cd: 16, max: 3, cond: (c) => c.week > 8,
       title: () => "同學生小孩了",
       body: (c) => `${pick(c, ["阿翔", "佳穎", "以前的班長", "一起長大的鄰居阿哲"])}在群組貼了寶寶的照片，大家都在討論要送什麼。`,
       options: [
@@ -1442,8 +1442,19 @@
       body: (c) => `第一次自己賺錢過年。爸媽、阿嬤、還有${pick(c, ["三個姪子", "兩個外甥", "表弟表妹"])}都在等你的紅包。`,
       options: [
         { label: "爸媽各六千、阿嬤三千、小孩各六百", note: "−NT$16,800；家裡很開心", apply: (c) => { c.savings -= 16800; c.flags.familyOk = 1; c.energy += 8; } },
-        { label: "量力而為，包 NT$6,000", note: "親戚可能會講話", apply: (c) => { c.savings -= 6000; if (chance(c, 0.4)) { c.energy -= 5; log(c, "二姑說「在外面賺那麼辛苦，包這樣就好」，聽起來不太像稱讚。"); } } },
-        { label: "說今年要存錢開店，只包爸媽", note: "−NT$3,000；媽媽幫你擋親戚", apply: (c) => { c.savings -= 3000; if (!c.flags.familyOk) { c.energy -= 6; log(c, "爸爸整個過年都沒怎麼跟你說話。"); } } },
+        { label: "量力而為，包 NT$2,000", note: "親戚可能會講話", apply: (c) => { c.savings -= 2000; if (chance(c, 0.4)) { c.energy -= 5; log(c, "二姑說「在外面賺那麼辛苦，包這樣就好」，聽起來不太像稱讚。"); } } },
+        { label: "說今年要存錢開店，只包爸媽", note: "−NT$1,200；媽媽幫你擋親戚", apply: (c) => { c.savings -= 1200; if (!c.flags.familyOk) { c.energy -= 6; log(c, "爸爸整個過年都沒怎麼跟你說話。"); } } },
+      ],
+    },
+    // 約兩成的年份家裡有狀況，紅包省不下來
+    cny_red_envelopes_big: {
+      cat: "urgent", weight: 0, fallback: 1,
+      title: () => "今年過年比較不一樣",
+      body: (c) => pick(c, ["阿嬤今年八十大壽，全家族都會回來吃年夜飯。", "爸爸年底開完刀，家裡這幾個月開銷很緊。", "家裡的老房子漏水，過年前剛花了一大筆錢修屋頂。"]),
+      options: [
+        { label: "爸媽各六千、阿嬤三千、小孩各六百", note: "−NT$16,800；家裡很開心", apply: (c) => { c.savings -= 16800; c.flags.familyOk = 1; c.energy += 8; } },
+        { label: "包 NT$6,000 給爸媽和阿嬤", note: "今年省不下來", apply: (c) => { c.savings -= 6000; c.flags.familyOk = 1; } },
+        { label: "只包爸媽 NT$1,200", note: "家裡會很失望", apply: (c) => { c.savings -= 1200; c.energy -= 8; log(c, "媽媽說「沒關係」，但年夜飯桌上大家都很安靜。"); } },
       ],
     },
     promote_clerk: {
@@ -1713,7 +1724,7 @@
       if (c.energy <= 5) c.inbox.push(ev(c, "sick"));
       // 每年過年（年初第 5 週）一定要包紅包
       const cal = T.calendar(c.week);
-      if (cal.weekOfYear === 5 && c.flags.cnyYear !== cal.year) { c.flags.cnyYear = cal.year; c.inbox.push(ev(c, "cny_red_envelopes")); }
+      if (cal.weekOfYear === 5 && c.flags.cnyYear !== cal.year) { c.flags.cnyYear = cal.year; c.inbox.push(ev(c, chance(c, 0.2) ? "cny_red_envelopes_big" : "cny_red_envelopes")); }
       const g = goals(c);
       // 店長的位子不一定是你的：第一次符合條件時，德哥可能先讓阿凱試（信任 90 以上機會減半）
       if (c.stage === "clerk" && g.every((x) => x.ok) && !c.flags.rivalChecked) {
