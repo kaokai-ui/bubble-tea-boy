@@ -657,7 +657,9 @@
     openStores(s).forEach((st) => st.staff.forEach((p) => !p.isPlayer && (!filter || filter(p, st)) && all.push({ st, p })));
     return all.length ? pick(s, all) : null;
   };
-  const sname = (st) => `${st.district}${LOCATIONS[st.key].name}店`;
+  // 事件可能指向已經關掉的店（舊存檔也有），找不到店時不能讓整個畫面壞掉
+  const sname = (st) => (st ? `${st.district}${LOCATIONS[st.key].name}店` : "那家店");
+  const dropStaleEvents = (s) => { s.inbox = s.inbox.filter((x) => !x.data || x.data.storeId == null || storeById(s, x.data.storeId)); };
 
   const EVENTS = {
     heatwave: {
@@ -1427,6 +1429,7 @@
     const penalty = st.rent * 2;
     s.cash -= penalty;
     s.stores = s.stores.filter((x) => x.id !== storeId);
+    dropStaleEvents(s);
     addNews(s, `${sname(st)}結束營業，提前解約賠了 ${fmtMoney(penalty)}，員工資遣。`);
   }
 
@@ -1651,6 +1654,7 @@
   // ---------- 給畫面用 ----------
   function view(s) {
     const cal = calendar(s.week);
+    dropStaleEvents(s);
     const inbox = s.inbox.map((inst) => eventView(s, inst));
     return {
       cal,
