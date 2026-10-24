@@ -16,7 +16,7 @@
 - `index.html`：畫面（手機優先）。
 - `sim.js`：經營模擬引擎（劇本一、劇本二的店長與董事長階段）。
 - `career.js`：劇本二的外送小弟與店員階段。
-- `balance.cjs`、`career_test.cjs`、`career_policy.cjs`、`diag.cjs`：自動玩家平衡測試（`node balance.cjs 200`、`node career_test.cjs 100`；`node career_policy.cjs 300` 比較認真玩和隨便玩的劇本二前半難度）。
+- `balance.cjs`、`career_test.cjs`、`career_policy.cjs`、`diag.cjs`：自動玩家平衡測試（`node balance.cjs 200`、`node career_test.cjs 100`；`node career_policy.cjs 300` 比較認真玩和隨便玩的劇本二前半難度；`node diag_events.cjs 100` 比較事件挑最好選項和全部照預設的差距，並列出預設選項最傷存款的事件）。
 - `img/`：插畫（WebP）。事件依類別共用插圖，對照表在 `index.html` 的 `EVENT_ART`。
 - `serve.py`：在電腦上開區域網路伺服器給手機玩（`python serve.py .`）。
 

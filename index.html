@@ -49,7 +49,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 400; text-wrap: balance; 
 /* 頂部狀態列 */
 .top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line) }
 .top-inner { max-width: 720px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 10px; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center }
-.brand { font-family: var(--display); font-size: 20px; line-height: 1.2 }
+.brand { font-family: var(--display); font-size: 20px; line-height: 1.2; word-break: keep-all }
 .when { font-size: 13px; color: var(--muted) }
 .stats { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px }
 .stats b { font-weight: 700 }
@@ -121,7 +121,7 @@ canvas { width: 100%; height: 200px; display: block }
 
 /* 對話框 */
 .sheet-bg { position: fixed; inset: 0; z-index: 20; background: rgb(0 0 0 / .42); display: grid; align-items: end; justify-items: center }
-.sheet { background: var(--surface); width: min(720px, 100%); max-height: 88%; overflow: auto; border-radius: 18px 18px 0 0; padding: 18px max(16px, env(safe-area-inset-right, 0px)) calc(18px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); display: grid; gap: 12px }
+.sheet { background: var(--surface); width: min(720px, 100%); max-height: 88vh; max-height: 88dvh; overflow: auto; overscroll-behavior: contain; border-radius: 18px 18px 0 0; padding: 18px max(16px, env(safe-area-inset-right, 0px)) calc(18px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); display: grid; gap: 12px }
 .sheet h2 { font-size: 22px }
 .opt { border: 1px solid var(--line); background: var(--surface-2); border-radius: 12px; padding: 12px 14px; text-align: left; display: grid; gap: 2px }
 .opt:hover { border-color: var(--brew); background: var(--brew-soft) }
@@ -392,7 +392,7 @@ function reportsView() {
   return `<section class="group"><div class="group-head"><h2>現金與每週淨利</h2><span class="small muted">最近 52 週</span></div>
     <div class="card"><canvas id="chart" width="680" height="200" aria-label="現金與每週淨利圖"></canvas>
     <div class="small muted"><span class="good">—— 現金</span>　<span class="warn">▮ 每週淨利</span></div></div></section>
-    ${r ? `<section class="group"><div class="group-head"><h2>上週</h2></div><div class="card num">營收 ${money(r.revenue)} · 淨利 <span class="${r.profit >= 0 ? "good" : "bad"}">${money(r.profit)}</span> · 累積淨利 ${money(S.profitTotal)}</div></section>` : ""}
+    ${r ? `<section class="group"><div class="group-head"><h2>上週</h2></div><div class="card num"><div>營收 ${money(r.revenue)} · 淨利 <span class="${r.profit >= 0 ? "good" : "bad"}">${money(r.profit)}</span> · 累積淨利 ${money(S.profitTotal)}</div></div></section>` : ""}
     <section class="group"><div class="group-head"><h2>對手</h2></div>${S.rivals.map((x) => `<div class="card"><b>${esc(x.name)}</b><span class="small muted">${esc(x.style)} · 門市 ${x.stores} 家 · 聲譽 ${stars(x.rep)}</span></div>`).join("")}</section>
     <section class="group"><div class="group-head"><h2>品牌大事記</h2></div><div class="card news">${S.news.slice(0, 30).map((n) => `<div><span class="small muted num">第 ${T.calendar(n.week).year} 年 ${T.calendar(n.week).weekOfYear} 週</span><br>${esc(n.text)}</div>`).join("")}</div></section>`;
 }
@@ -607,8 +607,11 @@ function bindCareer() {
     C.resolveEvent(c, sheet.uid, Number(b.dataset.opt));
     sheet = null;
     // 接下店長：交給經營引擎的店長模式
+    const stage = c.stage;
     if (c.promoted) { S = C.toManager(c); tab = "week"; }
     save(); render();
+    // 升遷換階段時回到最上面，先看到新階段的場景圖和說明
+    if (S !== c || c.stage !== stage) window.scrollTo(0, 0);
   });
   const yes = $("#yes-restart");
   if (yes) yes.onclick = () => { clearSave(); S = null; sheet = null; startSeed = (Date.now() ^ 0x5f3759df) >>> 0; render(); };
@@ -645,7 +648,11 @@ function bind() {
   if (bg) {
     bg.onclick = (e) => { if (e.target === bg) { sheet = null; render(); } };
     document.querySelectorAll("[data-close]").forEach((b) => b.onclick = () => { sheet = null; render(); });
-    document.querySelectorAll("[data-opt]").forEach((b) => b.onclick = () => { T.resolveEvent(S, sheet.uid, Number(b.dataset.opt)); sheet = null; save(); render(); });
+    document.querySelectorAll("[data-opt]").forEach((b) => b.onclick = () => {
+      const mode = S.mode;
+      T.resolveEvent(S, sheet.uid, Number(b.dataset.opt)); sheet = null; save(); render();
+      if (S.mode !== mode) window.scrollTo(0, 0); // 店長買下品牌變董事長
+    });
     document.querySelectorAll("[data-target]").forEach((b) => b.onclick = () => { const err = T.planAction(S, sheet.action, b.dataset.target); if (!err) { sheet = null; save(); render(); } });
     const yes = $("#yes-restart");
     if (yes) yes.onclick = () => { clearSave(); S = null; sheet = null; startSeed = (Date.now() ^ 0x5f3759df) >>> 0; render(); };
