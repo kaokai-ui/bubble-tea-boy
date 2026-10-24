@@ -1582,7 +1582,7 @@
   }
   function eventView(c, inst) {
     const e = EVENTS[inst.id];
-    return { uid: inst.uid, cat: e.cat, title: e.title(c, inst.data), body: e.body(c, inst.data), options: e.options.map((o) => ({ label: o.label, note: o.note || "" })), fallback: e.fallback };
+    return { uid: inst.uid, id: inst.id, cat: e.cat, title: e.title(c, inst.data), body: e.body(c, inst.data), options: e.options.map((o) => ({ label: o.label, note: o.note || "" })), fallback: e.fallback };
   }
   function normalize(c) {
     c.energy = clamp(c.energy, 0, 100);

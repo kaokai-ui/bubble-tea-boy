@@ -4,6 +4,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>茶飲董事長</title>
+<meta name="description" content="手搖飲連鎖經營遊戲：帶 300 萬開第一家店，或從外送小弟一路做到董事長。免費試玩，手機、電腦都能玩。">
+<meta property="og:title" content="茶飲董事長">
+<meta property="og:description" content="從外送小弟做到連鎖品牌的手搖飲經營遊戲，免費試玩。">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kaokai-ui.github.io/bubble-tea-boy/">
+<meta property="og:image" content="https://kaokai-ui.github.io/bubble-tea-boy/img/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" href="img/icon-64.png">
+<link rel="apple-touch-icon" href="img/icon-180.png">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -130,12 +141,23 @@ th:first-child, td:first-child { text-align: left }
 .offer { border: 2px solid var(--line); background: var(--surface); border-radius: var(--radius); padding: 14px; text-align: left; display: grid; gap: 4px }
 .offer[aria-pressed="true"] { border-color: var(--brew); background: var(--brew-soft) }
 .cup { font-family: var(--display); color: var(--brew) }
+
+/* 插畫：圖片載入前先用柔和底色佔位，深色模式稍微壓暗 */
+.art { display: block; width: 100%; height: auto; border-radius: var(--radius); background: var(--brew-soft); object-fit: cover }
+.art.hero { aspect-ratio: 16 / 9 }
+.art.banner { aspect-ratio: 16 / 9; max-height: 150px; margin-top: 12px; object-position: center 40% }
+.art.scene { aspect-ratio: 4 / 3; max-height: 240px }
+.art.thumb { aspect-ratio: 4 / 3; border-radius: 10px; margin-bottom: 6px }
+.art.wide { aspect-ratio: 16 / 9 }
+.art.strip { aspect-ratio: 16 / 9; max-height: 110px; object-position: center 60% }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .art { filter: brightness(.88) } }
+:root[data-theme="dark"] .art { filter: brightness(.88) }
 @media (prefers-reduced-motion: no-preference) { .sheet { animation: up .18s ease-out } @keyframes up { from { transform: translateY(24px); opacity: .6 } } }
 </style>
 
 <div id="app"></div>
-<script src="sim.js?v=7" charset="utf-8"></script>
-<script src="career.js?v=7" charset="utf-8"></script>
+<script src="sim.js?v=8" charset="utf-8"></script>
+<script src="career.js?v=8" charset="utf-8"></script>
 <script>
 "use strict";
 const T = globalThis.TeaSim;
@@ -163,17 +185,47 @@ function stars(rep) {
 }
 function moraleColor(m) { return m >= 60 ? "var(--jade)" : m >= 35 ? "var(--mango)" : "var(--berry)"; }
 
+// ---------- 插畫 ----------
+// 事件插畫依類別共用；沒列到的事件不放圖。劇本一、二的事件代號不重複，放同一張表。
+const EVENT_ART = Object.fromEntries(Object.entries({
+  rain: "rain_order plum_rain typhoon_day rainy_weeks raincoat_torn typhoon cold_snap",
+  scooter: "scooter flat_tire scooter_stolen parking_ticket emission_check traffic_accident helmet_stolen police_check road_works parking_fight",
+  delivery: "wrong_address order_stolen gps_down prank_order late_delivery_fine elevator_ban dog_chase not_cold_enough order_cancelled hospital_order factory_gate rating_drop",
+  customer: "rude_customer wrong_sugar allergy_claim ig_troll regular_unhappy drunk_customer dirty_video child_slip wrong_change fake_bill till_short bad_reviews food_scare wrong_order_viral rude_video ex_employee_post syrup_scandal",
+  bar: "spill sealer_broke pearls_burnt ice_machine fridge_alarm power_cut ac_broke expired_milk tablet_crash new_pos label_misprint straw_shortage supplier_late cockroach recipe_leak pearl_shortage ac_broken power_outage spill_injury supplier_batch",
+  boss: "boss_test boss_warning boss_mood boss_birthday boss_son boss_abroad promote_clerk promote_manager taste_test new_drink_trial promo_idea unpaid_overtime price_hike",
+  rush: "rush_crisis influencer_visit celebrity_order new_year_shift parttimer_noshow contest_invite coworker_swap lazy_coworker coworker_fight new_coworker new_hire_mom runner_quits meimei_leaves viral group_order tourist_wave holiday_rush festival expansion_chaos heatwave",
+  inspect: "inspection_day health_check hq_audit mystery_shopper fire_inspection health_inspection bank_review",
+  good: "regular_gift big_tip customer_praise employee_month receipt_lottery tax_refund platform_bonus tip_box regular_story lonely_grandpa kitten_rescue stray_dog volunteer blood_drive coffee_coupon scratch_card regular_moves my_birthday lost_wallet award star_employee year_end_party collab corporate_deal tea_expo",
+  family: "family_call family_money grandma_hospital parents_visit hometown_job",
+  sick: "sick caught_cold toothache heat_stroke insomnia gym_injury back_pain health_scare food_poison overslept heat_wave burnout_manager chairman_health",
+  money: "scam_call online_scam friend_borrow credit_card insurance_due phone_bill power_bill license_tax stock_tip invest_seminar course_sale side_hustle phone_broke phone_left_bus sneaker_drop concert_ticket classmate_flex cafe_partner milk_price fruit_glut tea_price min_wage loan_offer store_losing register_theft theft_found landlord landlord_sells landlord_visit plastic_ban delivery_fee_up",
+  rival: "rival_recruit rival_bogo same_name_shop rival_open price_war copycat rival_closes staff_poach",
+  wedding: "cousin_wedding classmate_wedding classmate_baby best_man baby_cake",
+  love: "love_meet love_dating love_confess love_anniversary love_support love_parents first_date",
+  breakup: "love_overtime love_breakup",
+  newyear: "cny_red_envelopes",
+}).flatMap(([art, ids]) => ids.split(" ").map((id) => [id, art])));
+const art = (name, cls, alt = "") => `<img class="art ${cls}" src="img/${name}.webp" alt="${esc(alt)}" loading="lazy" decoding="async">`;
+const eventArt = (ev) => EVENT_ART[ev.id] ? art("ev-" + EVENT_ART[ev.id], "scene") : "";
+function endingArt(o) {
+  if (o.title === "回老家") return art("end-home", "wide");
+  return art("end-" + ({ S: "s", A: "a", B: "b", C: "c", D: "d" }[o.grade] || "c"), "wide");
+}
+const stageArt = (stage) => art("stage-" + stage, "banner");
+
 // ---------- 開局 ----------
 function renderStart() {
   const saved = load();
   const offers = T.offersForStart(startSeed);
   $("#app").innerHTML = `
   <div class="wrap start">
+    <img class="art hero" src="img/key.webp" alt="黃昏街角亮著燈的手搖飲店，門口停著外送機車" decoding="async" fetchpriority="high">
     <p class="cup small">手搖飲連鎖 · 可玩原型</p>
     <h1>茶飲董事長</h1>
     <div class="offers" style="grid-template-columns:1fr 1fr">
-      <button class="offer" aria-pressed="${startMode === "brand"}" data-mode="brand"><b>劇本一：創業董事長</b><span class="small muted">帶著 300 萬開第一家店，三年內做出品牌。</span></button>
-      <button class="offer" aria-pressed="${startMode === "career"}" data-mode="career"><b>劇本二：從外送小弟做起</b><span class="small muted">十九歲進飲料店跑外送，一路升店員、店長，最後買下品牌。</span></button>
+      <button class="offer" aria-pressed="${startMode === "brand"}" data-mode="brand">${art("scenario-founder", "thumb")}<b>劇本一：創業董事長</b><span class="small muted">帶著 300 萬開第一家店，三年內做出品牌。</span></button>
+      <button class="offer" aria-pressed="${startMode === "career"}" data-mode="career">${art("scenario-runner", "thumb")}<b>劇本二：從外送小弟做起</b><span class="small muted">十九歲進飲料店跑外送，一路升店員、店長，最後買下品牌。</span></button>
     </div>
     ${startMode === "career" ? `
     <p>你在「阿德茶舖」找到第一份工作：外送小弟。每週安排班表、練手藝、存錢；做得好，德哥會讓你站吧台、當店長，總有一天把品牌交給你。</p>
@@ -262,7 +314,7 @@ function weekView(v) {
     <section class="group"><div class="group-head"><h2>${title}</h2><span class="tag ${cls}" style="background:var(--${cls === "urgent" ? "berry" : cls === "opportunity" ? "jade" : "mango"}-soft)">${items.length} 件</span></div>
     ${items.length ? items.map(eventCard).join("") : `<div class="empty">${emptyText}</div>`}</section>`;
   return `
-    ${S.over ? endingBlock() : ""}
+    ${S.over ? endingBlock() : stageArt(S.mode === "manager" ? "manager" : "chairman")}
     ${S.mode === "manager" ? managerGoal() : ""}
     <section class="hours">
       <div class="group-head"><h2>你的時間</h2><span class="num">${used} / ${base} 小時${used > base ? `（加班 ${used - base}）` : ""}</span></div>
@@ -280,7 +332,7 @@ function weekView(v) {
 
 function endingBlock() {
   const o = S.over;
-  return `<section class="card" style="border-color:var(--brew)"><span class="cup">結局 · 評級 ${o.grade}</span><h2>${esc(o.title)}</h2><p>${esc(o.text)}</p></section>`;
+  return `<section class="card" style="border-color:var(--brew);margin-top:12px">${endingArt(o)}<span class="cup">結局 · 評級 ${o.grade}</span><h2>${esc(o.title)}</h2><p>${esc(o.text)}</p></section>`;
 }
 
 function storesView() {
@@ -383,7 +435,7 @@ function renderSheet() {
     const all = [...e.urgent, ...e.opportunity, ...e.people];
     const ev = all.find((x) => x.uid === sheet.uid);
     if (!ev) { sheet = null; return ""; }
-    inner = `<span class="tag" style="justify-self:start;background:var(--${ev.cat === "urgent" ? "berry" : ev.cat === "opportunity" ? "jade" : "mango"}-soft)">${ev.cat === "urgent" ? "急件" : ev.cat === "opportunity" ? "機會" : "有人找你"}</span>
+    inner = `${eventArt(ev)}<span class="tag" style="justify-self:start;background:var(--${ev.cat === "urgent" ? "berry" : ev.cat === "opportunity" ? "jade" : "mango"}-soft)">${ev.cat === "urgent" ? "急件" : ev.cat === "opportunity" ? "機會" : "有人找你"}</span>
       <h2>${esc(ev.title)}</h2><p>${esc(ev.body)}</p>
       ${ev.options.map((o, i) => `<button class="opt" data-opt="${i}"><b>${esc(o.label)}</b>${o.note ? `<span class="n">${esc(o.note)}</span>` : ""}</button>`).join("")}
       ${ev.cat === "urgent" && ev.fallback >= 0 ? `<p class="small muted">這週沒處理的話，會照「${esc(ev.options[ev.fallback].label)}」辦理。</p>` : ""}
@@ -402,7 +454,7 @@ function renderSheet() {
     const r = sheet.report;
     const head = r.lines.length ? r.lines : [{ text: "平靜的一週。" }];
     const weatherIcon = { sunny: "☀", hot: "🔥", rain: "☂", cloudy: "☁", cold: "❄", typhoon: "🌀" };
-    inner = `<span class="cup">第 ${r.cal.year} 年 第 ${r.cal.weekOfYear} 週 週報</span>
+    inner = `${art("report", "strip")}<span class="cup">第 ${r.cal.year} 年 第 ${r.cal.weekOfYear} 週 週報</span>
       <h2>淨利 <span class="${r.profit >= 0 ? "good" : "bad"} num">${money(r.profit)}</span></h2>
       <div class="num small muted">營收 ${money(r.revenue)} · ${S.mode === "manager" ? "店裡現金" : "現金"} ${wan(r.cashStart)} → <b class="${r.cash < 0 ? "bad" : ""}">${wan(r.cash)}</b>${S.mode === "manager" ? ` · 你的存款 ${wan(S.career.savings)}` : ""} · 聲譽 ${stars(r.rep)} · 天氣 ${r.weather.map((w) => weatherIcon[w]).join(" ")}</div>
       <div>${head.map((l) => `<div class="report-line">${esc(l.text)}</div>`).join("")}</div>
@@ -472,7 +524,7 @@ function careerWeek(c, used, base, max) {
   const inbox = c.inbox.map((inst) => C.eventView(c, inst));
   const wage = C.STAGES[c.stage].wage + (c.wageBonus || 0);
   return `
-    ${c.over ? `<section class="card" style="border-color:var(--brew)"><span class="cup">結局 · 評級 ${c.over.grade}</span><h2>${esc(c.over.title)}</h2><p>${esc(c.over.text)}</p></section>` : ""}
+    ${c.over ? `<section class="card" style="border-color:var(--brew);margin-top:12px">${endingArt(c.over)}<span class="cup">結局 · 評級 ${c.over.grade}</span><h2>${esc(c.over.title)}</h2><p>${esc(c.over.text)}</p></section>` : stageArt(c.stage)}
     <section class="hours">
       <div class="group-head"><h2>這週班表</h2><span class="num">${used} / ${base} 小時${used > base ? `（超時 ${used - base}）` : ""}</span></div>
       ${(c.lastPlan || []).length && !c.plan.length ? `<button class="pill" id="repeatlast">↻ 照上週排（${c.lastPlan.length} 項）</button>` : ""}
@@ -507,7 +559,7 @@ function careerSheet(c) {
     const inst = c.inbox.find((x) => x.uid === sheet.uid);
     if (!inst) { sheet = null; return ""; }
     const ev = C.eventView(c, inst);
-    inner = `<h2>${esc(ev.title)}</h2><p>${esc(ev.body)}</p>
+    inner = `${eventArt(ev)}<h2>${esc(ev.title)}</h2><p>${esc(ev.body)}</p>
       ${ev.options.map((o, i) => `<button class="opt" data-opt="${i}"><b>${esc(o.label)}</b>${o.note ? `<span class="n">${esc(o.note)}</span>` : ""}</button>`).join("")}
       ${ev.cat === "urgent" && ev.fallback >= 0 ? `<p class="small muted">要在這週內決定；沒決定的話，結束本週時會照預設選「${esc(ev.options[ev.fallback].label)}」。</p>` : ""}
       <button class="close" data-close>晚點再決定</button>`;
@@ -518,7 +570,7 @@ function careerSheet(c) {
       <button class="end" id="endanyway">照預設處理，結束本週</button><button class="close" data-close>回去決定</button>`;
   } else if (sheet.kind === "report") {
     const r = sheet.report;
-    inner = `<span class="cup">第 ${T.calendar(r.week).year} 年 第 ${T.calendar(r.week).weekOfYear} 週</span>
+    inner = `${art("report", "strip")}<span class="cup">第 ${T.calendar(r.week).year} 年 第 ${T.calendar(r.week).weekOfYear} 週</span>
       <h2>存款 <span class="num ${r.savings < 0 ? "bad" : ""}">${money(r.savings)}</span></h2>
       <div class="num small muted">薪水 ${money(r.pay)}${r.tips ? ` · 小費 ${money(r.tips)}` : ""} · 生活費 −${money(r.living)} · 體力 ${r.energy}</div>
       <div>${(r.lines.length ? r.lines : [{ text: "這週沒排什麼事。" }]).map((l) => `<div class="report-line">${esc(l.text)}</div>`).join("")}</div>

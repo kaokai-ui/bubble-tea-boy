@@ -1348,6 +1348,7 @@
     const options = ev.dynamicOptions ? ev.dynamicOptions(s, inst.data) : ev.options;
     return {
       uid: inst.uid,
+      id: inst.id,
       cat: ev.cat,
       title: ev.title(s, inst.data),
       body: ev.body(s, inst.data),
